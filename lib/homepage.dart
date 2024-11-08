@@ -36,11 +36,32 @@ class _HomepageState extends State<Homepage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Homepage"),
+        backgroundColor: Colors.white, // Set AppBar background to white
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.center, // Center the logo
+          children: [
+            Padding(
+              padding:
+                  const EdgeInsets.only(left: 40), // Add padding to the logo
+              child: Image.asset(
+                'assets/logo.png', // Use your logo asset here
+                height: 50, // Adjust the size as needed
+              ),
+            ),
+          ],
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.message_outlined),
-            onPressed: signOut,
+          Padding(
+            padding: const EdgeInsets.only(
+                top: 5, right: 10), // Add right padding of 30
+            child: IconButton(
+              icon: const Icon(
+                Icons.message_outlined,
+                color: Colors.black,
+              ), // Icon color
+              iconSize: 25,
+              onPressed: signOut,
+            ),
           ),
         ],
       ),
@@ -81,9 +102,11 @@ class _HomepageState extends State<Homepage> {
         showSelectedLabels: true,
         showUnselectedLabels: true,
         onTap: _onItemTapped,
-        backgroundColor: Colors.white,
+        backgroundColor:
+            Colors.white, // Set BottomNavigationBar background to white
         type: BottomNavigationBarType.fixed,
       ),
+      backgroundColor: Colors.white, // Set whole screen background to white
     );
   }
 
@@ -99,7 +122,7 @@ class _HomepageState extends State<Homepage> {
         height: 60, // Set a fixed height for the background container
         width: 65, // Set a fixed width for the background container
         decoration: BoxDecoration(
-          color: isSelected ? Color(0xFF808569) : Colors.transparent,
+          color: isSelected ? const Color(0xFF808569) : Colors.transparent,
           borderRadius:
               BorderRadius.circular(8), // Rounded corners for the background
           boxShadow: isSelected
@@ -107,7 +130,7 @@ class _HomepageState extends State<Homepage> {
                   BoxShadow(
                       color: Colors.grey.withOpacity(0.4),
                       blurRadius: 6,
-                      offset: Offset(0, 3))
+                      offset: const Offset(0, 3))
                 ]
               : [],
         ),
@@ -120,8 +143,11 @@ class _HomepageState extends State<Homepage> {
           crossAxisAlignment:
               CrossAxisAlignment.center, // Center items horizontally
           children: [
-            Icon(icon,
-                color: isSelected ? Colors.white : Colors.black, size: 24),
+            Icon(
+              icon,
+              color: isSelected ? Colors.white : Colors.black,
+              size: 24,
+            ),
             const SizedBox(height: 4), // Adjust spacing between icon and text
             Text(
               label,
