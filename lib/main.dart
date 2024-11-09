@@ -31,7 +31,7 @@ class MyApp extends StatelessWidget {
       title: 'UnitThrift',
       theme: ThemeData(
         colorScheme:
-            ColorScheme.fromSeed(seedColor: Color.fromARGB(255, 255, 255, 255)),
+            ColorScheme.fromSeed(seedColor: const Color.fromARGB(255, 255, 255, 255)),
         useMaterial3: true,
       ),
       home: const Wrapper(),

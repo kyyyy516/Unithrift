@@ -17,7 +17,7 @@ class _LoginState extends State<Login> {
     if (!email.text.endsWith('@graduate.utm.my')) {
       // Show an error message if the email doesn't match
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please use your UTM graduate email address.')),
+        const SnackBar(content: Text('Please use your UTM graduate email address.')),
       );
       return; // Stop the sign-in process
     }
@@ -139,7 +139,7 @@ class _LoginState extends State<Login> {
                         ),
                       ),
                       // Email Input Field
-                      Container(
+                      SizedBox(
                         width: 327,
                         height: 46,
                         child: TextField(
@@ -175,7 +175,7 @@ class _LoginState extends State<Login> {
                         ),
                       ),
                       // Password Input Field
-                      Container(
+                      SizedBox(
                         width: 327,
                         height: 46,
                         child: TextField(
@@ -220,12 +220,6 @@ class _LoginState extends State<Login> {
                       // Login Button
                       ElevatedButton(
                         onPressed: () => signIn(),
-                        child: const Text(
-                          "Log In",
-                          style: TextStyle(
-                              color:
-                                  Colors.white), // White color for button text
-                        ),
                         style: ElevatedButton.styleFrom(
                           minimumSize: const Size(327,
                               50), // Set the button width same as input field
@@ -238,6 +232,12 @@ class _LoginState extends State<Login> {
                             borderRadius:
                                 BorderRadius.circular(20), // Rounded corners
                           ),
+                        ),
+                        child: const Text(
+                          "Log In",
+                          style: TextStyle(
+                              color:
+                                  Colors.white), // White color for button text
                         ),
                       ),
                     ],
