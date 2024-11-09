@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'otp_from.dart';
 
 class Register extends StatefulWidget {
   const Register({super.key});
@@ -18,7 +19,7 @@ class _RegisterState extends State<Register> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   bool isLoading = false;
 
-register() async {
+  register() async {
   if (!_formKey.currentState!.validate()) return;
 
   setState(() {
@@ -32,17 +33,19 @@ register() async {
       password: password.text,
     );
 
-    // Send email verification (optional)
+    // Send email verification
     await userCredential.user?.sendEmailVerification();
 
-    // Navigate to the Home Page directly
-    Navigator.pushReplacementNamed(context, '/home'); // Navigate to HomePage directly
+    // Navigate to OTP page
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const OtpFrom()),
+    );
 
     // Show confirmation message
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Account successfully created! Please verify your email.')),
+      const SnackBar(content: Text('Account successfully created! Please check your email for verification.')),
     );
-
   } on FirebaseAuthException catch (e) {
     String errorMessage = 'Registration failed. Please try again.';
 
@@ -200,7 +203,7 @@ register() async {
                                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                               )
                             : const Text("Register"),
-                          style: ElevatedButton.styleFrom(
+                        style: ElevatedButton.styleFrom(
                           minimumSize: const Size(327, 50),
                           backgroundColor: const Color.fromARGB(255, 0, 0, 0),
                           elevation: 10,
