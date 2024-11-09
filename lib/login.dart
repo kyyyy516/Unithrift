@@ -13,56 +13,72 @@ class _LoginState extends State<Login> {
   TextEditingController password = TextEditingController();
 
   signIn() async {
-    if (!email.text.endsWith('@graduate.utm.my')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please use your UTM graduate email address.')),
-      );
-      return;
+  if (!email.text.endsWith('@graduate.utm.my')) {
+    // Validate UTM graduate email
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Please use your UTM graduate email address.')),
+    );
+    return;
+  }
+
+  try {
+    // Attempt to sign in
+    await FirebaseAuth.instance.signInWithEmailAndPassword(
+      email: email.text,
+      password: password.text,
+    );
+
+    // On success, navigate to the Homepage
+    Navigator.pushReplacementNamed(context, '/homepage'); // Replace with your homepage route
+  } on FirebaseAuthException catch (e) {
+    String errorMessage = 'Invalid email or password. Please try again.';
+    if (e.code == 'user-not-found') {
+      errorMessage = 'No user found for this email.';
+    } else if (e.code == 'wrong-password') {
+      errorMessage = 'Incorrect password.';
     }
 
-    try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email.text,
-        password: password.text,
-      );
-    } on FirebaseAuthException catch (e) {
-      String errorMessage = 'Invalid email or password. Please try again.';
-      print("FirebaseAuthException caught: ${e.code}, message: ${e.message}");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMessage)),
-      );
-    } catch (e) {
-      print("General error caught: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error signing in: $e')),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(errorMessage)),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('An error occurred: $e')),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.white,
+      color: Colors
+          .white, // Set the background color for the whole screen to white
       child: Scaffold(
-        backgroundColor: Colors.transparent,
-        resizeToAvoidBottomInset: true,
+        backgroundColor:
+            Colors.transparent, // Make Scaffold background transparent
+        resizeToAvoidBottomInset:
+            true, // Ensures UI resizes to avoid keyboard overlap
         body: Column(
           children: [
-            // Header Section
+            // First Part: Background and Title Section (non-scrollable)
             Container(
-              color: const Color(0xFFE5E8D9),
+              color:
+                  const Color(0xFFE5E8D9), // First container with the new color
               alignment: Alignment.centerLeft,
               padding: const EdgeInsets.symmetric(vertical: 65, horizontal: 40),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Logo
                   Image.asset(
                     'assets/logo.png',
-                    width: 128,
-                    height: 46,
-                    fit: BoxFit.fill,
+                    width: 128, // Desired width on screen
+                    height: 46, // Desired height on screen
+                    fit: BoxFit
+                        .fill, // Stretches the image to exactly fit the dimensions
                   ),
                   const SizedBox(height: 20),
+                  // Title
                   const Text(
                     "Sign in to your\nAccount",
                     style: TextStyle(
@@ -70,10 +86,13 @@ class _LoginState extends State<Login> {
                       fontWeight: FontWeight.bold,
                       color: Color(0xFFA3A98A),
                     ),
+                    textAlign: TextAlign.left,
                   ),
                   const SizedBox(height: 20),
+                  // Sign Up Link
                   GestureDetector(
                     onTap: () {
+                      // Navigate to the registration page
                       Navigator.pushNamed(context, '/register');
                     },
                     child: const Text(
@@ -87,13 +106,15 @@ class _LoginState extends State<Login> {
                 ],
               ),
             ),
-            // Login Form Section
+            // Second Part: Login Form Section
             Expanded(
               child: SingleChildScrollView(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  padding: const EdgeInsets.only(
+                      top: 10, left: 10, right: 10, bottom: 10),
                   decoration: const BoxDecoration(
-                    color: Colors.white,
+                    color:
+                        Colors.white, // White background for the second section
                     borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(20),
                       topRight: Radius.circular(20),
@@ -101,6 +122,7 @@ class _LoginState extends State<Login> {
                   ),
                   child: Column(
                     children: [
+                      // Title for Email
                       const Padding(
                         padding: EdgeInsets.only(
                             top: 40, left: 40, right: 40, bottom: 8),
@@ -110,12 +132,13 @@ class _LoginState extends State<Login> {
                               "UTM Student Email",
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey,
+                                color: Colors.grey, // Grey color for the title
                               ),
                             ),
                           ],
                         ),
                       ),
+                      // Email Input Field
                       Container(
                         width: 327,
                         height: 46,
@@ -135,6 +158,7 @@ class _LoginState extends State<Login> {
                         ),
                       ),
                       const SizedBox(height: 20),
+                      // Title for Password
                       const Padding(
                         padding:
                             EdgeInsets.only(left: 40, right: 40, bottom: 8),
@@ -144,12 +168,13 @@ class _LoginState extends State<Login> {
                               "Password",
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey,
+                                color: Colors.grey, // Grey color for the title
                               ),
                             ),
                           ],
                         ),
                       ),
+                      // Password Input Field
                       Container(
                         width: 327,
                         height: 46,
@@ -169,12 +194,16 @@ class _LoginState extends State<Login> {
                           style: const TextStyle(fontSize: 14),
                         ),
                       ),
+                      // Forgot Password link at the bottom right of the input field
                       Padding(
-                        padding: const EdgeInsets.only(right: 30, top: 20),
+                        padding: const EdgeInsets.only(
+                            right: 30,
+                            top: 20), // Adding 20px padding on top and right
                         child: Align(
                           alignment: Alignment.centerRight,
                           child: GestureDetector(
                             onTap: () {
+                              // Handle forgot password action
                               print("Forgot Password tapped");
                             },
                             child: const Text(
@@ -188,19 +217,26 @@ class _LoginState extends State<Login> {
                         ),
                       ),
                       const SizedBox(height: 40),
+                      // Login Button
                       ElevatedButton(
                         onPressed: () => signIn(),
                         child: const Text(
                           "Log In",
-                          style: TextStyle(color: Colors.white),
+                          style: TextStyle(
+                              color:
+                                  Colors.white), // White color for button text
                         ),
                         style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(327, 50),
-                          backgroundColor: const Color(0xFF808569),
-                          elevation: 10,
-                          shadowColor: Colors.black.withOpacity(0.3),
+                          minimumSize: const Size(327,
+                              50), // Set the button width same as input field
+                          backgroundColor:
+                              const Color(0xFF808569), // Green color
+                          elevation: 10, // Add drop shadow
+                          shadowColor: Colors.black
+                              .withOpacity(0.3), // Drop shadow color
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius:
+                                BorderRadius.circular(20), // Rounded corners
                           ),
                         ),
                       ),
