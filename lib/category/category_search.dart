@@ -10,6 +10,6 @@ class SearchCategoty extends StatefulWidget {
 class _SearchCategotyState extends State<SearchCategoty> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: const Text("test"));
+    return Scaffold(body: const Text("test2"));
   }
 }
