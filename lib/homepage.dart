@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'chatlist.dart';
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -12,7 +13,6 @@ class _HomepageState extends State<Homepage> {
   final user = FirebaseAuth.instance.currentUser;
   int _selectedIndex = 0;
 
-  // List of screens for each BottomNavigationBar item
   static const List<Widget> _pages = <Widget>[
     Text('Explore Page'),
     Text('Updates Page'),
@@ -21,7 +21,6 @@ class _HomepageState extends State<Homepage> {
     Text('Account Page'),
   ];
 
-  // Method to handle item tap
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -36,31 +35,49 @@ class _HomepageState extends State<Homepage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white, // Set AppBar background to white
+        backgroundColor: Colors.white,
         title: Row(
-          mainAxisAlignment: MainAxisAlignment.center, // Center the logo
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Padding(
-              padding:
-                  const EdgeInsets.only(left: 40), // Add padding to the logo
+              padding: const EdgeInsets.only(left: 0),
               child: Image.asset(
-                'assets/logo.png', // Use your logo asset here
-                height: 50, // Adjust the size as needed
+                'assets/logo.png',
+                height: 50,
               ),
             ),
           ],
         ),
+        leading: Padding(
+          padding: const EdgeInsets.only(
+              top: 5, left: 10), // Adjust padding for left side
+          child: IconButton(
+            icon: const Icon(
+              Icons.exit_to_app_outlined,
+              color: Colors.black,
+            ),
+            iconSize: 25,
+            // Wrap the signOut function in a callback to ensure it runs on button press
+            onPressed: signOut,
+          ),
+        ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(
-                top: 5, right: 10), // Add right padding of 30
+            padding: const EdgeInsets.only(top: 5, right: 10),
             child: IconButton(
               icon: const Icon(
                 Icons.message_outlined,
                 color: Colors.black,
-              ), // Icon color
+              ),
               iconSize: 25,
-              onPressed: signOut,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ChatList(),
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -102,11 +119,10 @@ class _HomepageState extends State<Homepage> {
         showSelectedLabels: true,
         showUnselectedLabels: true,
         onTap: _onItemTapped,
-        backgroundColor:
-            Colors.white, // Set BottomNavigationBar background to white
+        backgroundColor: Colors.white,
         type: BottomNavigationBarType.fixed,
       ),
-      backgroundColor: Colors.white, // Set whole screen background to white
+      backgroundColor: Colors.white,
     );
   }
 
@@ -119,12 +135,11 @@ class _HomepageState extends State<Homepage> {
 
     return BottomNavigationBarItem(
       icon: Container(
-        height: 60, // Set a fixed height for the background container
-        width: 65, // Set a fixed width for the background container
+        height: 60,
+        width: 65,
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF808569) : Colors.transparent,
-          borderRadius:
-              BorderRadius.circular(8), // Rounded corners for the background
+          borderRadius: BorderRadius.circular(8),
           boxShadow: isSelected
               ? [
                   BoxShadow(
@@ -134,26 +149,22 @@ class _HomepageState extends State<Homepage> {
                 ]
               : [],
         ),
-        padding: const EdgeInsets.symmetric(
-            vertical: 6,
-            horizontal: 8), // Reduce horizontal padding to adjust spacing
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
         child: Column(
-          mainAxisAlignment:
-              MainAxisAlignment.center, // Center items vertically
-          crossAxisAlignment:
-              CrossAxisAlignment.center, // Center items horizontally
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Icon(
               icon,
               color: isSelected ? Colors.white : Colors.black,
               size: 24,
             ),
-            const SizedBox(height: 4), // Adjust spacing between icon and text
+            const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
                   color: isSelected ? Colors.white : Colors.black,
-                  fontSize: 10), // Adjust font size for consistency
+                  fontSize: 10),
             ),
           ],
         ),
