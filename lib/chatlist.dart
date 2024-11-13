@@ -28,7 +28,7 @@ class _ChatListState extends State<ChatList> {
         elevation: 0,
       ),
       body: Container(
-        color: Colors.white, // Set the background color to white
+        color: Colors.white,
         child: StreamBuilder<QuerySnapshot>(
           stream: _db.collection('users').snapshots(),
           builder: (context, snapshot) {
@@ -41,11 +41,11 @@ class _ChatListState extends State<ChatList> {
 
             // Filter out the current user from the list
             final users = snapshot.data!.docs
-                .where((doc) => doc['userId'] != currentUser!.uid)
+                .where((doc) => doc['userId'] != currentUser?.uid)
                 .toList();
 
             return Padding(
-              padding: const EdgeInsets.only(left: 10), // Add left padding here
+              padding: const EdgeInsets.only(left: 10),
               child: ListView.builder(
                 itemCount: users.length,
                 itemBuilder: (context, index) {
@@ -53,47 +53,103 @@ class _ChatListState extends State<ChatList> {
                   final userId = user['userId'];
                   final userEmail = user['email'];
                   final profilePic = user['profilePic'] ?? '';
-                  final lastMessage = user['lastMessage'] ?? '';
-                  final unreadCount = user['unreadCount'] ?? 0;
-                  final timestamp = user['lastMessageTime']?.toDate();
+                  final chatId = _generateChatId(currentUser!.uid, userId);
 
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundImage: profilePic.isNotEmpty
-                          ? NetworkImage(profilePic)
-                          : const AssetImage('assets/default_avatar.png')
-                              as ImageProvider,
-                    ),
-                    title: Text(userEmail),
-                    subtitle: Text(lastMessage),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (timestamp != null)
-                          Text("${timestamp.hour}:${timestamp.minute}"),
-                        if (unreadCount > 0)
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Text(
-                              unreadCount.toString(),
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                          ),
-                      ],
-                    ),
-                    onTap: () async {
-                      final chatId = _generateChatId(currentUser!.uid, userId);
-                      await _firestoreService.createChatRoom(
-                          chatId, currentUser.uid, userId);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ChatScreen(chatId: chatId),
+                  return StreamBuilder<DocumentSnapshot>(
+                    stream: _db.collection('chats').doc(chatId).snapshots(),
+                    builder: (context, chatSnapshot) {
+                      if (chatSnapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (chatSnapshot.hasError) {
+                        return Center(
+                            child: Text("Error: ${chatSnapshot.error}"));
+                      }
+
+                      final chatData =
+                          chatSnapshot.data?.data() as Map<String, dynamic>?;
+
+                      final lastMessage = chatData?['lastMessage'] ?? '';
+                      final lastMessageTime =
+                          chatData?['lastMessageTime']?.toDate();
+
+                      // Check unread count only if the current user is the receiver
+                      final unreadCount =
+                          chatData?['unreadCount']?[currentUser.uid] ?? 0;
+
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundImage: profilePic.isNotEmpty
+                              ? NetworkImage(profilePic)
+                              : const AssetImage('assets/default_avatar.png')
+                                  as ImageProvider,
                         ),
+                        title: Text(userEmail),
+                        subtitle: Text(lastMessage),
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (lastMessageTime != null)
+                              Text(
+                                  "${lastMessageTime.hour.toString().padLeft(2, '0')}:${lastMessageTime.minute.toString().padLeft(2, '0')}"),
+                            if (unreadCount > 0)
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Text(
+                                  unreadCount.toString(),
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                              ),
+                          ],
+                        ),
+                        onTap: () async {
+                          final chatId =
+                              _generateChatId(currentUser.uid, userId);
+
+                          // Check if the chat room exists
+                          final chatDoc =
+                              await _db.collection('chats').doc(chatId).get();
+                          if (!chatDoc.exists) {
+                            // Create the chat room only if it doesn't exist
+                            await _firestoreService.createChatRoom(
+                                chatId, currentUser.uid, userId);
+                          }
+
+                          // Fetch the latest chat data
+                          final chatData =
+                              await _db.collection('chats').doc(chatId).get();
+                          final chatMap = chatData.data();
+
+                          // Determine the receiver's ID
+                          final users =
+                              List<String>.from(chatMap?['users'] ?? []);
+                          final receiverId =
+                              users.firstWhere((id) => id != currentUser.uid);
+                          final lastMessageSenderId =
+                              chatMap?['lastMessageSenderId'];
+
+                          // Only reset unread count if the current user is the receiver
+                          // and the last message was not sent by the current user
+                          if (lastMessageSenderId != currentUser.uid &&
+                              (chatMap?['unreadCount']?[currentUser.uid] ?? 0) >
+                                  0) {
+                            await _db.collection('chats').doc(chatId).update({
+                              'unreadCount.${currentUser.uid}': 0,
+                            });
+                          }
+
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ChatScreen(chatId: chatId),
+                            ),
+                          );
+                        },
                       );
                     },
                   );
@@ -106,7 +162,6 @@ class _ChatListState extends State<ChatList> {
     );
   }
 
-  // Generate a unique chat ID by combining the two user IDs
   String _generateChatId(String userId1, String userId2) {
     return userId1.hashCode <= userId2.hashCode
         ? '${userId1}_$userId2'

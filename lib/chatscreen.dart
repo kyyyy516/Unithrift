@@ -47,10 +47,9 @@ class _ChatScreenState extends State<ChatScreen> {
         elevation: 0,
       ),
       body: Container(
-        color: Colors.white, // Set the whole screen background to white
+        color: Colors.white,
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: 10.0), // Add horizontal padding here
+          padding: const EdgeInsets.symmetric(horizontal: 10.0),
           child: Column(
             children: [
               Expanded(
@@ -95,7 +94,47 @@ class _ChatScreenState extends State<ChatScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (imageUrl != null) Image.network(imageUrl),
+                                if (imageUrl != null)
+                                  GestureDetector(
+                                    onTap: () {
+                                      // Show enlarged image in full screen
+                                      showDialog(
+                                        context: context,
+                                        builder: (_) => Dialog(
+                                          backgroundColor: Colors.black,
+                                          child: Stack(
+                                            children: [
+                                              InteractiveViewer(
+                                                child: Image.network(imageUrl),
+                                              ),
+                                              Positioned(
+                                                top: 10,
+                                                right: 10,
+                                                child: IconButton(
+                                                  icon: const Icon(Icons.close,
+                                                      color: Colors.white),
+                                                  onPressed: () =>
+                                                      Navigator.of(context)
+                                                          .pop(),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(10.0),
+                                      child: Image.network(
+                                        imageUrl,
+                                        width:
+                                            180, // Set your desired max width
+                                        height:
+                                            240, // Set your desired max height
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                  ),
                                 if (messageText.isNotEmpty)
                                   Text(
                                     messageText,
@@ -104,13 +143,17 @@ class _ChatScreenState extends State<ChatScreen> {
                                             ? Colors.white
                                             : Colors.black),
                                   ),
-                                Text(
-                                  "${timestamp.hour}:${timestamp.minute}",
-                                  style: TextStyle(
-                                      fontSize: 10,
-                                      color: isCurrentUser
-                                          ? Colors.white
-                                          : Colors.black),
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                      top: 5.0), // Add top padding
+                                  child: Text(
+                                    "${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}",
+                                    style: TextStyle(
+                                        fontSize: 10,
+                                        color: isCurrentUser
+                                            ? Colors.white
+                                            : Colors.black),
+                                  ),
                                 ),
                               ],
                             ),
@@ -122,8 +165,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ),
               Padding(
-                padding:
-                    const EdgeInsets.only(bottom: 10.0), // Add bottom padding
+                padding: const EdgeInsets.only(bottom: 10.0),
                 child: Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Row(
