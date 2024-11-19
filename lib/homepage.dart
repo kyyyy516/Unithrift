@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+//import 'package:unithrift/explore/explore.dart';
+//import 'package:unithrift/explore/feature.dart';
+import 'navigation bar/bottom_navbar.dart';
 import 'chatlist.dart';
 
 class Homepage extends StatefulWidget {
@@ -12,14 +15,6 @@ class Homepage extends StatefulWidget {
 class _HomepageState extends State<Homepage> {
   final user = FirebaseAuth.instance.currentUser;
   int _selectedIndex = 0;
-
-  static const List<Widget> _pages = <Widget>[
-    Text('Explore Page'),
-    Text('Updates Page'),
-    Text('Sell Page'),
-    Text('Cart Page'),
-    Text('Account Page'),
-  ];
 
   void _onItemTapped(int index) {
     setState(() {
@@ -34,96 +29,58 @@ class _HomepageState extends State<Homepage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 0),
+                child: Image.asset(
+                  'assets/logo.png',
+                  height: 50,
+                ),
+              ),
+            ],
+          ),
+          leading: Padding(
+            padding: const EdgeInsets.only(
+                top: 5, left: 10), // Adjust padding for left side
+            child: IconButton(
+              icon: const Icon(
+                Icons.exit_to_app_outlined,
+                color: Colors.black,
+              ),
+              iconSize: 25,
+              // Wrap the signOut function in a callback to ensure it runs on button press
+              onPressed: signOut,
+            ),
+          ),
+          actions: [
             Padding(
-              padding: const EdgeInsets.only(left: 0),
-              child: Image.asset(
-                'assets/logo.png',
-                height: 50,
+              padding: const EdgeInsets.only(top: 5, right: 10),
+              child: IconButton(
+                icon: const Icon(
+                  Icons.message_outlined,
+                  color: Colors.black,
+                ),
+                iconSize: 25,
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ChatList(),
+                    ),
+                  );
+                },
               ),
             ),
           ],
         ),
-        leading: Padding(
-          padding: const EdgeInsets.only(
-              top: 5, left: 10), // Adjust padding for left side
-          child: IconButton(
-            icon: const Icon(
-              Icons.exit_to_app_outlined,
-              color: Colors.black,
-            ),
-            iconSize: 25,
-            // Wrap the signOut function in a callback to ensure it runs on button press
-            onPressed: signOut,
-          ),
+        body: Center(
+          child: pages[_selectedIndex],
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(top: 5, right: 10),
-            child: IconButton(
-              icon: const Icon(
-                Icons.message_outlined,
-                color: Colors.black,
-              ),
-              iconSize: 25,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ChatList(),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-      body: Center(
-        child: _pages[_selectedIndex],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: <BottomNavigationBarItem>[
-          _buildBottomNavigationBarItem(
-            icon: Icons.explore_outlined,
-            label: 'Explore',
-            index: 0,
-          ),
-          _buildBottomNavigationBarItem(
-            icon: Icons.notifications_outlined,
-            label: 'Update',
-            index: 1,
-          ),
-          _buildBottomNavigationBarItem(
-            icon: Icons.add_circle_outline,
-            label: 'Sell',
-            index: 2,
-          ),
-          _buildBottomNavigationBarItem(
-            icon: Icons.shopping_cart_outlined,
-            label: 'Cart',
-            index: 3,
-          ),
-          _buildBottomNavigationBarItem(
-            icon: Icons.account_circle_outlined,
-            label: 'Account',
-            index: 4,
-          ),
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.black,
-        showSelectedLabels: true,
-        showUnselectedLabels: true,
-        onTap: _onItemTapped,
-        backgroundColor: Colors.white,
-        type: BottomNavigationBarType.fixed,
-      ),
-      backgroundColor: Colors.white,
-    );
+        bottomNavigationBar: mainBottomNavBar(_selectedIndex, _onItemTapped));
   }
 
   BottomNavigationBarItem _buildBottomNavigationBarItem({
