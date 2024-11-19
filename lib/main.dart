@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:unithrift/wrapper.dart';
+//import 'populate_firestore.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +20,7 @@ void main() async {
     );
   } else {
     await Firebase.initializeApp();
+    //await populateFirestore();
   }
 
   runApp(const MyApp());
