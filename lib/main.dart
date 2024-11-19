@@ -7,14 +7,16 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (kIsWeb) {
     await Firebase.initializeApp(
-        options: const FirebaseOptions(
-            apiKey: "AIzaSyB05amp4j-PV4Wfyy1bQwiEDdFbaTPHefY",
-            authDomain: "unithrift-b2282.firebaseapp.com",
-            projectId: "unithrift-b2282",
-            storageBucket: "unithrift-b2282.firebasestorage.app",
-            messagingSenderId: "381941062209",
-            appId: "1:381941062209:web:588230cd0d4741819484c0",
-            measurementId: "G-G6ZR5F2CF3"));
+      options: const FirebaseOptions(
+        apiKey: "AIzaSyB05amp4j-PV4Wfyy1bQwiEDdFbaTPHefY",
+        authDomain: "unithrift-b2282.firebaseapp.com",
+        projectId: "unithrift-b2282",
+        storageBucket: "unithrift-b2282.firebasestorage.app",
+        messagingSenderId: "381941062209",
+        appId: "1:381941062209:web:588230cd0d4741819484c0",
+        measurementId: "G-G6ZR5F2CF3",
+      ),
+    );
   } else {
     await Firebase.initializeApp();
   }
@@ -28,14 +30,18 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
       title: 'UnitThrift',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color.fromARGB(255, 255, 255, 255)),
-        useMaterial3: true,
+        primaryColor: Colors.white,
+        scaffoldBackgroundColor: Colors.white,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0,
+        ),
+        useMaterial3: false,
       ),
-      home:  const Wrapper(),
+      home: const Wrapper(),
     );
   }
 }
