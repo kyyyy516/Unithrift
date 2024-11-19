@@ -53,7 +53,7 @@ class FirestoreService {
   Future<String> uploadImage(String imagePath) async {
     try {
       // Replace this URL with your ImgBB API URL
-      final apiUrl =
+      const apiUrl =
           'https://api.imgbb.com/1/upload?key=fc9f999af3a441ea33b1f537072ea749'; // Your ImgBB API key
 
       // Prepare the file for upload
