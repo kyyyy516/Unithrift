@@ -22,7 +22,7 @@ class _CampusServiceState extends State<CampusService> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: mainAppBar(context),
-      body: const SingleChildScrollView(child: Text("Rental")),
+      body: const SingleChildScrollView(child: Text("Campus service")),
       //mok for bottomNav bar
       bottomNavigationBar: mainBottomNavBar(_selectedIndex, _onItemTapped),
     );

@@ -15,27 +15,24 @@ const List<Widget> pages = <Widget>[
 
 void commonNavigate(BuildContext context, int index) {
   switch (index) {
-    case 0:
-      Navigator.push(
+    case 0: // Explore
+      Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(
-          builder: (context) => const Homepage(),
-        ),
+        MaterialPageRoute(builder: (context) => const Homepage()),
+        (route) => false, // Remove all other routes from the stack
       );
       break;
-    case 1:
+    case 1: // Notification
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => const NotificationPage(),
-        ),
+        MaterialPageRoute(builder: (context) => const NotificationPage()),
       );
       break;
-    case 2:
-      // Add navigation logic for Sell Page if necessary
+    case 2: // Sell
       break;
-    case 3:
-      // Add navigation logic for Cart Page if necessary
+    case 3: // Cart
+      break;
+    case 4: // Account
       break;
     default:
       break;
