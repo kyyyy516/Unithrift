@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart'; // For date formatting
 
 class NotificationPage extends StatefulWidget {
-  const NotificationPage({Key? key}) : super(key: key);
+  const NotificationPage({super.key});
 
   @override
   State<NotificationPage> createState() => _NotificationPageState();
@@ -23,9 +23,9 @@ class _NotificationPageState extends State<NotificationPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Padding(
-          padding: const EdgeInsets.only(left: 10.0), // Add left padding
-          child: const Text("Notifications"),
+        title: const Padding(
+          padding: EdgeInsets.only(left: 10.0), // Add left padding
+          child: Text("Notifications"),
         ),
       ),
       body: Column(
