@@ -20,6 +20,24 @@ class _ChatListState extends State<ChatList> {
   Widget build(BuildContext context) {
     final currentUser = _auth.currentUser;
 
+    // Handle null currentUser
+    if (currentUser == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text("Chat List"),
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0,
+        ),
+        body: const Center(
+          child: Text(
+            "You are not logged in. Please log in to view your chat list.",
+            style: TextStyle(color: Colors.red, fontSize: 16),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Chat List"),
@@ -38,11 +56,29 @@ class _ChatListState extends State<ChatList> {
             if (snapshot.hasError) {
               return Center(child: Text("Error: ${snapshot.error}"));
             }
+            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              return const Center(
+                child: Text(
+                  "No users found.",
+                  style: TextStyle(fontSize: 16),
+                ),
+              );
+            }
 
             // Filter out the current user from the list
-            final users = snapshot.data!.docs
-                .where((doc) => doc['userId'] != currentUser?.uid)
-                .toList();
+            final users = snapshot.data!.docs.where((doc) {
+              final data = doc.data() as Map<String, dynamic>?; // Ensure data is non-null
+              return data != null && data['userId'] != currentUser.uid;
+            }).toList();
+
+            if (users.isEmpty) {
+              return const Center(
+                child: Text(
+                  "No other users available.",
+                  style: TextStyle(fontSize: 16),
+                ),
+              );
+            }
 
             return Padding(
               padding: const EdgeInsets.only(left: 10),
@@ -50,17 +86,22 @@ class _ChatListState extends State<ChatList> {
                 itemCount: users.length,
                 itemBuilder: (context, index) {
                   final user = users[index].data() as Map<String, dynamic>;
-                  final userId = user['userId'];
-                  final userEmail = user['email'];
+                  final userId = user['userId'] ?? '';
+                  final userEmail = user['email'] ?? 'Unknown Email';
                   final profilePic = user['profilePic'] ?? '';
-                  final chatId = _generateChatId(currentUser!.uid, userId);
+                  final chatId = _generateChatId(currentUser.uid, userId);
+
+                  // Ensure userId is valid
+                  if (userId.isEmpty) {
+                    return Container();
+                  }
 
                   return StreamBuilder<DocumentSnapshot>(
                     stream: _db.collection('chats').doc(chatId).snapshots(),
                     builder: (context, chatSnapshot) {
                       if (chatSnapshot.connectionState ==
                           ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
+                        return const SizedBox.shrink();
                       }
                       if (chatSnapshot.hasError) {
                         return Center(
@@ -70,7 +111,7 @@ class _ChatListState extends State<ChatList> {
                       final chatData =
                           chatSnapshot.data?.data() as Map<String, dynamic>?;
 
-                      final lastMessage = chatData?['lastMessage'] ?? '';
+                      final lastMessage = chatData?['lastMessage'] ?? 'No messages yet';
                       final lastMessageTime =
                           chatData?['lastMessageTime']?.toDate();
 
@@ -108,39 +149,12 @@ class _ChatListState extends State<ChatList> {
                           ],
                         ),
                         onTap: () async {
-                          final chatId =
-                              _generateChatId(currentUser.uid, userId);
-
-                          // Check if the chat room exists
                           final chatDoc =
                               await _db.collection('chats').doc(chatId).get();
                           if (!chatDoc.exists) {
                             // Create the chat room only if it doesn't exist
                             await _firestoreService.createChatRoom(
                                 chatId, currentUser.uid, userId);
-                          }
-
-                          // Fetch the latest chat data
-                          final chatData =
-                              await _db.collection('chats').doc(chatId).get();
-                          final chatMap = chatData.data();
-
-                          // Determine the receiver's ID
-                          final users =
-                              List<String>.from(chatMap?['users'] ?? []);
-                          final receiverId =
-                              users.firstWhere((id) => id != currentUser.uid);
-                          final lastMessageSenderId =
-                              chatMap?['lastMessageSenderId'];
-
-                          // Only reset unread count if the current user is the receiver
-                          // and the last message was not sent by the current user
-                          if (lastMessageSenderId != currentUser.uid &&
-                              (chatMap?['unreadCount']?[currentUser.uid] ?? 0) >
-                                  0) {
-                            await _db.collection('chats').doc(chatId).update({
-                              'unreadCount.${currentUser.uid}': 0,
-                            });
                           }
 
                           Navigator.push(

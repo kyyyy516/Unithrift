@@ -1,8 +1,22 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:unithrift/signup/forget_pw.dart';
+import 'package:unithrift/signup/register.dart';
+
+void main() {
+  runApp(MaterialApp(
+    initialRoute: '/login', // Set your initial screen
+    routes: {
+      '/': (context) => const Register(),
+      '/forgot-password':(context) => const ForgotPassword(),
+      '/login': (context) => const Login(),
+    },
+  ));
+}
 
 class Login extends StatefulWidget {
-  const Login({super.key});
+  const Login({Key? key, this.successMessage}) : super(key: key);
+  final String? successMessage; // Add this to show a message
 
   @override
   State<Login> createState() => _LoginState();
@@ -17,7 +31,8 @@ class _LoginState extends State<Login> {
     if (!email.text.endsWith('@graduate.utm.my')) {
       // Show an error message if the email doesn't match
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please use your UTM graduate email address.')),
+        const SnackBar(
+            content: Text('Please use your UTM graduate email address.')),
       );
       return; // Stop the sign-in process
     }
@@ -90,17 +105,35 @@ class _LoginState extends State<Login> {
                   ),
                   const SizedBox(height: 20),
                   // Sign Up Link
-                  GestureDetector(
-                    onTap: () {
-                      // Navigate to the registration page
-                      Navigator.pushNamed(context, '/register');
-                    },
-                    child: const Text(
-                      "Don’t have an account? Sign up",
-                      style: TextStyle(
+                  RichText(
+                    text: TextSpan(
+                      text: "Don't have an account? ",
+                      style: const TextStyle(
                         fontSize: 12,
                         color: Color(0xFFA5AA8C),
                       ),
+                      children: [
+                        WidgetSpan(
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const Register(),
+                                ),
+                              );
+                            },
+                            child: const Text(
+                              "Sign up",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFFA5AA8C),
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -196,26 +229,37 @@ class _LoginState extends State<Login> {
                       ),
                       // Forgot Password link at the bottom right of the input field
                       Padding(
-                        padding: const EdgeInsets.only(
-                            right: 30,
-                            top: 20), // Adding 20px padding on top and right
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: GestureDetector(
-                            onTap: () {
-                              // Handle forgot password action
-                              print("Forgot Password tapped");
-                            },
-                            child: const Text(
-                              "Forgot Password?",
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFFA5AA8C),
+                        padding: const EdgeInsets.only(left: 0, top: 8), // Align with Password column
+                        child: RichText(
+                          text: TextSpan(
+                            text: "Forgot Password? ",
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFFA5AA8C), // Match your color style
+                            ),
+                            children: [
+                              WidgetSpan(
+                                child: GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const ForgotPassword()),
+                                  );
+                                },
+                                child: const Text(
+                                  "Reset here",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFFA5AA8C),
+                                    decoration: TextDecoration.underline, // Underline for link-like style
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                         ),
                       ),
+                    ),
                       const SizedBox(height: 40),
                       // Login Button
                       ElevatedButton(
