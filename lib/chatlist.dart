@@ -20,7 +20,6 @@ class _ChatListState extends State<ChatList> {
   Widget build(BuildContext context) {
     final currentUser = _auth.currentUser;
 
-    // Handle null currentUser
     if (currentUser == null) {
       return Scaffold(
         appBar: AppBar(
@@ -65,9 +64,8 @@ class _ChatListState extends State<ChatList> {
               );
             }
 
-            // Filter out the current user from the list
             final users = snapshot.data!.docs.where((doc) {
-              final data = doc.data() as Map<String, dynamic>?; // Ensure data is non-null
+              final data = doc.data() as Map<String, dynamic>?;
               return data != null && data['userId'] != currentUser.uid;
             }).toList();
 
@@ -91,7 +89,6 @@ class _ChatListState extends State<ChatList> {
                   final profilePic = user['profilePic'] ?? '';
                   final chatId = _generateChatId(currentUser.uid, userId);
 
-                  // Ensure userId is valid
                   if (userId.isEmpty) {
                     return Container();
                   }
@@ -111,11 +108,10 @@ class _ChatListState extends State<ChatList> {
                       final chatData =
                           chatSnapshot.data?.data() as Map<String, dynamic>?;
 
-                      final lastMessage = chatData?['lastMessage'] ?? 'No messages yet';
+                      final lastMessage =
+                          chatData?['lastMessage'] ?? 'No messages yet';
                       final lastMessageTime =
                           chatData?['lastMessageTime']?.toDate();
-
-                      // Check unread count only if the current user is the receiver
                       final unreadCount =
                           chatData?['unreadCount']?[currentUser.uid] ?? 0;
 
@@ -149,12 +145,39 @@ class _ChatListState extends State<ChatList> {
                           ],
                         ),
                         onTap: () async {
+                          final chatId =
+                              _generateChatId(currentUser.uid, userId);
+
+                          // Check if the chat room exists
                           final chatDoc =
                               await _db.collection('chats').doc(chatId).get();
                           if (!chatDoc.exists) {
                             // Create the chat room only if it doesn't exist
                             await _firestoreService.createChatRoom(
                                 chatId, currentUser.uid, userId);
+                          }
+
+                          // Fetch the latest chat data
+                          final chatData =
+                              await _db.collection('chats').doc(chatId).get();
+                          final chatMap = chatData.data();
+
+                          // Determine the receiver's ID
+                          final users =
+                              List<String>.from(chatMap?['users'] ?? []);
+                          final receiverId =
+                              users.firstWhere((id) => id != currentUser.uid);
+                          final lastMessageSenderId =
+                              chatMap?['lastMessageSenderId'];
+
+                          // Only reset unread count if the current user is the receiver
+                          // and the last message was not sent by the current user
+                          if (lastMessageSenderId != currentUser.uid &&
+                              (chatMap?['unreadCount']?[currentUser.uid] ?? 0) >
+                                  0) {
+                            await _db.collection('chats').doc(chatId).update({
+                              'unreadCount.${currentUser.uid}': 0,
+                            });
                           }
 
                           Navigator.push(
