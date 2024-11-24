@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:unithrift/explore/campus_service.dart';
-import 'package:unithrift/explore/feature.dart';
-import 'package:unithrift/explore/popular_rental.dart';
+import 'package:unithrift/explore/service/campus_service.dart';
+import 'package:unithrift/explore/feature/feature.dart';
+import 'package:unithrift/explore/rental/popular_rental.dart';
 
 class Explore extends StatefulWidget {
   const Explore({super.key});
@@ -55,8 +55,7 @@ class _ExploreState extends State<Explore> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => const PopularRental()),
-                  MaterialPageRoute(builder: (context) => const PopularRentalPage()),
+                      builder: (context) => const PopularRentalPage()),
                 );
               },
               child: featureBox(

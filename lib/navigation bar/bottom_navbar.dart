@@ -10,7 +10,7 @@ const List<Widget> pages = <Widget>[
   Explore(),
   NotificationPage(),
   Text('Sell Page'),
-  Cart(),
+  Cart(true),
   Text('Account Page'),
   
 ];
@@ -36,7 +36,7 @@ void commonNavigate(BuildContext context, int index) {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const Cart(),
+          builder: (context) => const Cart(false),
         ),
       );
       break;

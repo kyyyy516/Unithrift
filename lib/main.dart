@@ -1,8 +1,12 @@
+import 'dart:developer';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:unithrift/cart/cart.dart';
-import 'package:unithrift/explore/popular_rental.dart';
+import 'package:unithrift/explore/feature/feature.dart';
+import 'package:unithrift/explore/rental/popular_rental.dart';
+import 'package:unithrift/explore/service/campus_service.dart';
 import 'package:unithrift/wrapper.dart';
 //import 'populate_firestore.dart';
 
@@ -45,7 +49,7 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: false,
       ),
-      home: const PopularRentalPage(),
+      home: const FeaturePage(),
     );
   }
 }
