@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+//import 'package:unithrift/explore/explore.dart';
+//import 'package:unithrift/explore/feature.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'navigation bar/bottom_navbar.dart';
 import 'chatlist.dart';
@@ -76,8 +78,7 @@ class _HomepageState extends State<Homepage> {
                     );
                   },
                 ),
-                if (user !=
-                    null) // Ensure user is not null before accessing uid
+                if (user != null)
                   StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
                         .collection('chats')
@@ -122,6 +123,53 @@ class _HomepageState extends State<Homepage> {
         child: pages[_selectedIndex],
       ),
       bottomNavigationBar: mainBottomNavBar(_selectedIndex, _onItemTapped),
+    );
+  }
+
+  BottomNavigationBarItem _buildBottomNavigationBarItem({
+    required IconData icon,
+    required String label,
+    required int index,
+  }) {
+    bool isSelected = _selectedIndex == index;
+
+    return BottomNavigationBarItem(
+      icon: Container(
+        height: 60,
+        width: 65,
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF808569) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                      color: Colors.grey.withOpacity(0.4),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3))
+                ]
+              : [],
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? Colors.white : Colors.black,
+              size: 24,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                  color: isSelected ? Colors.white : Colors.black,
+                  fontSize: 10),
+            ),
+          ],
+        ),
+      ),
+      label: '',
     );
   }
 }
