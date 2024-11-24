@@ -56,6 +56,7 @@ class _ExploreState extends State<Explore> {
                   context,
                   MaterialPageRoute(
                       builder: (context) => const PopularRental()),
+                  MaterialPageRoute(builder: (context) => const PopularRentalPage()),
                 );
               },
               child: featureBox(

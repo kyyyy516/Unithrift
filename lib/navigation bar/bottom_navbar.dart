@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:unithrift/cart/cart.dart';
 import 'package:unithrift/homepage.dart';
 import 'package:unithrift/notification_page.dart';
 import '../explore/explore.dart';
@@ -9,8 +10,9 @@ const List<Widget> pages = <Widget>[
   Explore(),
   NotificationPage(),
   Text('Sell Page'),
-  Text('Cart Page'),
+  Cart(),
   Text('Account Page'),
+  
 ];
 
 void commonNavigate(BuildContext context, int index) {
@@ -30,11 +32,13 @@ void commonNavigate(BuildContext context, int index) {
       break;
     case 2: // Sell
       break;
-    case 3: // Cart
-      break;
-    case 4: // Account
-      break;
-    default:
+  case 3:
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const Cart(),
+        ),
+      );
       break;
   }
 }

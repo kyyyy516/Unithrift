@@ -1,4 +1,6 @@
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart' hide CarouselController;
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
@@ -52,6 +54,56 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
     super.dispose();
   }
 
+void _addToCart(Map<String, dynamic> product) async {
+  try {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in first')),
+      );
+      return;
+    }
+
+    final cartCollection = FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser.uid)
+        .collection('cart');
+
+    // Check if a similar product already exists in the cart
+    final existingProductQuery = await cartCollection
+        .where('id', isEqualTo: product['id'])
+        .where('name', isEqualTo: product['name'])
+        .get();
+
+    // If product already in cart, increment quantity instead of adding a duplicate
+    if (existingProductQuery.docs.isNotEmpty) {
+       // If product already in cart, increment quantity instead of adding a duplicate
+   
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${product['name']} already exist in cart.')),
+      );
+      return;
+    
+    }
+
+    // Add new product to cart
+    await cartCollection.add({
+      ...product,
+      'quantity': 1,
+      'addedAt': FieldValue.serverTimestamp(),
+      'seller': product['seller'] ?? 'Unknown Seller'
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${product['name']} added to cart')),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error adding to cart: $e')),
+    );
+  }
+}
+    
   @override
   Widget build(BuildContext context) {
     List<String> images = [
@@ -339,17 +391,16 @@ class _ItemDetailPageState extends State<ItemDetailPage> {
                     flex: 2,
                     child: ElevatedButton(
                       onPressed: () {
-                        // Add to cart functionality
+                        _addToCart(widget.product);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF808569),
-                        foregroundColor: Colors.white, // Makes text white
+                        foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(4), // Less rounded corners
+                          borderRadius: BorderRadius.circular(4),
                         ),
                         padding: const EdgeInsets.symmetric(
-                            vertical: 8, horizontal: 16), // Adjusted padding
+                            vertical: 8, horizontal: 16),
                       ),
                       child: const Text(
                         'Add to Cart',

@@ -1,6 +1,8 @@
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart' hide CarouselController;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:unithrift/cart/cart.dart';
 import 'package:unithrift/explore/item.dart';
 import 'package:unithrift/navigation%20bar/bottom_navbar.dart';
 import 'package:unithrift/navigation%20bar/common_appbar.dart';
@@ -35,6 +37,57 @@ class _FeaturePageState extends State<FeaturePage> {
       commonNavigate(context, index);
     });
   }
+
+
+
+void _addToCart(Map<String, dynamic> product, String sourceCollection) async {
+  try {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in first')),
+      );
+      return;
+    }
+
+    final cartCollection = FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser.uid)
+        .collection('cart');
+
+    // Check if a similar product already exists in the cart
+    final existingProductQuery = await cartCollection
+        .where('id', isEqualTo: product['id'])
+        .where('name', isEqualTo: product['name'])
+        .get();
+
+    // If product already in cart, increment quantity instead of adding a duplicate
+    if (existingProductQuery.docs.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${product['name']} already exist in cart.')),
+      );
+      return;
+    }
+
+    // Add new product to cart
+    await cartCollection.add({
+      ...product,
+      'sourceCollection': sourceCollection,  // Add source collection identifier
+      'quantity': 1,
+      'addedAt': FieldValue.serverTimestamp(),
+      'seller': product['seller'] ?? 'Unknown Seller'
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${product['name']} added to cart')),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error adding to cart: $e')),
+    );
+  }
+}
+
 
   // Category Box Widget
   Widget categoryBox(String category) {
@@ -288,6 +341,7 @@ class _FeaturePageState extends State<FeaturePage> {
                 // Filter products based on search query and selected category
                 final filteredProducts = products.where((doc) {
                   final data = doc.data() as Map<String, dynamic>;
+
                   final name = (data['name'] ?? '').toString().toLowerCase();
                   final category =
                       (data['category'] ?? '').toString().toLowerCase();
@@ -473,11 +527,7 @@ class _FeaturePageState extends State<FeaturePage> {
                       ),
                       GestureDetector(
                         onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text("${product['name']} added to cart"),
-                            ),
-                          );
+                          _addToCart(product,'feature_items');
                         },
                         child: Container(
                           margin: const EdgeInsets.only(right: 10),
