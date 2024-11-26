@@ -14,7 +14,6 @@ class ChatList extends StatefulWidget {
 class _ChatListState extends State<ChatList> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final FirestoreService _firestoreService = FirestoreService();
 
   @override
   Widget build(BuildContext context) {
@@ -42,166 +41,172 @@ class _ChatListState extends State<ChatList> {
         title: const Text("Chat List"),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
-        elevation: 0,
+        elevation: 1,
       ),
-      body: Container(
-        color: Colors.white,
-        child: StreamBuilder<QuerySnapshot>(
-          stream: _db.collection('users').snapshots(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (snapshot.hasError) {
-              return Center(child: Text("Error: ${snapshot.error}"));
-            }
-            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return const Center(
-                child: Text(
-                  "No users found.",
-                  style: TextStyle(fontSize: 16),
-                ),
-              );
-            }
-
-            final users = snapshot.data!.docs.where((doc) {
-              final data = doc.data() as Map<String, dynamic>?;
-              return data != null && data['userId'] != currentUser.uid;
-            }).toList();
-
-            if (users.isEmpty) {
-              return const Center(
-                child: Text(
-                  "No other users available.",
-                  style: TextStyle(fontSize: 16),
-                ),
-              );
-            }
-
-            return Padding(
-              padding: const EdgeInsets.only(left: 10),
-              child: ListView.builder(
-                itemCount: users.length,
-                itemBuilder: (context, index) {
-                  final user = users[index].data() as Map<String, dynamic>;
-                  final userId = user['userId'] ?? '';
-                  final userEmail = user['email'] ?? 'Unknown Email';
-                  final profilePic = user['profilePic'] ?? '';
-                  final chatId = _generateChatId(currentUser.uid, userId);
-
-                  if (userId.isEmpty) {
-                    return Container();
-                  }
-
-                  return StreamBuilder<DocumentSnapshot>(
-                    stream: _db.collection('chats').doc(chatId).snapshots(),
-                    builder: (context, chatSnapshot) {
-                      if (chatSnapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return const SizedBox.shrink();
-                      }
-                      if (chatSnapshot.hasError) {
-                        return Center(
-                            child: Text("Error: ${chatSnapshot.error}"));
-                      }
-
-                      final chatData =
-                          chatSnapshot.data?.data() as Map<String, dynamic>?;
-
-                      final lastMessage =
-                          chatData?['lastMessage'] ?? 'No messages yet';
-                      final lastMessageTime =
-                          chatData?['lastMessageTime']?.toDate();
-                      final unreadCount =
-                          chatData?['unreadCount']?[currentUser.uid] ?? 0;
-
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundImage: profilePic.isNotEmpty
-                              ? NetworkImage(profilePic)
-                              : const AssetImage('assets/default_avatar.png')
-                                  as ImageProvider,
-                        ),
-                        title: Text(userEmail),
-                        subtitle: Text(lastMessage),
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            if (lastMessageTime != null)
-                              Text(
-                                  "${lastMessageTime.hour.toString().padLeft(2, '0')}:${lastMessageTime.minute.toString().padLeft(2, '0')}"),
-                            if (unreadCount > 0)
-                              Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Text(
-                                  unreadCount.toString(),
-                                  style: const TextStyle(color: Colors.white),
-                                ),
-                              ),
-                          ],
-                        ),
-                        onTap: () async {
-                          final chatId =
-                              _generateChatId(currentUser.uid, userId);
-
-                          // Check if the chat room exists
-                          final chatDoc =
-                              await _db.collection('chats').doc(chatId).get();
-                          if (!chatDoc.exists) {
-                            // Create the chat room only if it doesn't exist
-                            await _firestoreService.createChatRoom(
-                                chatId, currentUser.uid, userId);
-                          }
-
-                          // Fetch the latest chat data
-                          final chatData =
-                              await _db.collection('chats').doc(chatId).get();
-                          final chatMap = chatData.data();
-
-                          // Determine the receiver's ID
-                          final users =
-                              List<String>.from(chatMap?['users'] ?? []);
-                          final receiverId =
-                              users.firstWhere((id) => id != currentUser.uid);
-                          final lastMessageSenderId =
-                              chatMap?['lastMessageSenderId'];
-
-                          // Only reset unread count if the current user is the receiver
-                          // and the last message was not sent by the current user
-                          if (lastMessageSenderId != currentUser.uid &&
-                              (chatMap?['unreadCount']?[currentUser.uid] ?? 0) >
-                                  0) {
-                            await _db.collection('chats').doc(chatId).update({
-                              'unreadCount.${currentUser.uid}': 0,
-                            });
-                          }
-
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ChatScreen(chatId: chatId),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _db
+            .collection('chats')
+            .where('users', arrayContains: currentUser.uid)
+            .orderBy('lastMessageTime', descending: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text("Error: ${snapshot.error}"));
+          }
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(
+              child: Text(
+                "No chats available.",
+                style: TextStyle(fontSize: 16),
               ),
             );
-          },
-        ),
+          }
+
+          final chatDocs = snapshot.data!.docs;
+
+          return ListView.builder(
+            itemCount: chatDocs.length,
+            itemBuilder: (context, index) {
+              final chatData = chatDocs[index].data() as Map<String, dynamic>;
+              final chatId = chatDocs[index].id;
+
+              // Safely extract the other user's ID
+              final otherUserId =
+                  (chatData['users'] as List<dynamic>).firstWhere(
+                (id) => id != currentUser.uid,
+                orElse: () => null,
+              );
+
+              if (otherUserId == null) {
+                return const SizedBox.shrink(); // Skip if no other user
+              }
+
+              final lastMessage = chatData['lastMessage'] ?? 'No messages yet';
+              final lastMessageTime =
+                  chatData['lastMessageTime']?.toDate() ?? DateTime.now();
+              final unreadCount =
+                  chatData['unreadCount']?[currentUser.uid] ?? 0;
+
+              return FutureBuilder<DocumentSnapshot>(
+                future: _db.collection('users').doc(otherUserId).get(),
+                builder: (context, userSnapshot) {
+                  if (userSnapshot.connectionState == ConnectionState.waiting) {
+                    return const SizedBox.shrink();
+                  }
+                  if (userSnapshot.hasError) {
+                    return Center(child: Text("Error: ${userSnapshot.error}"));
+                  }
+                  if (!userSnapshot.hasData || !userSnapshot.data!.exists) {
+                    return const SizedBox.shrink();
+                  }
+
+                  final userData =
+                      userSnapshot.data!.data() as Map<String, dynamic>;
+                  final userName = userData['username'] ?? 'Unknown Username';
+                  final profilePic = userData['profilePic'] ?? '';
+
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 10.0,
+                      horizontal: 16.0,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: Colors.grey.shade200),
+                      ),
+                    ),
+                    child: InkWell(
+                      onTap: () async {
+                        // Reset unread count for the current user
+                        if (unreadCount > 0) {
+                          await _db.collection('chats').doc(chatId).update({
+                            'unreadCount.${currentUser.uid}': 0,
+                          });
+                        }
+
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ChatScreen(chatId: chatId),
+                          ),
+                        );
+                      },
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 24, // Smaller size for avatar
+                            backgroundImage: profilePic.isNotEmpty
+                                ? NetworkImage(profilePic)
+                                : const AssetImage('assets/default_avatar.png')
+                                    as ImageProvider,
+                          ),
+                          const SizedBox(width: 12), // Adjusted spacing
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  userName,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  lastMessage,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                "${lastMessageTime.hour.toString().padLeft(2, '0')}:${lastMessageTime.minute.toString().padLeft(2, '0')}",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                              if (unreadCount > 0)
+                                Container(
+                                  margin: const EdgeInsets.only(top: 8.0),
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Text(
+                                    unreadCount.toString(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        },
       ),
     );
-  }
-
-  String _generateChatId(String userId1, String userId2) {
-    return userId1.hashCode <= userId2.hashCode
-        ? '${userId1}_$userId2'
-        : '${userId2}_$userId1';
   }
 }

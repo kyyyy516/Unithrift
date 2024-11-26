@@ -4,9 +4,9 @@ Future<void> populateFirestore() async {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
   // Mock user IDs
-  const String deniesUserId = "dakxxz65kuUMI5aB2kTr9MNk48T2";
-  const String buyer1UserId = "rxngiTXBoPQxm2s3V3hIXJSmBvh1";
-  const String buyer2UserId = "BaiFEj1J7GNsVESEAXzKEPidJe43";
+  const String deniesUserId = "yM3jUpoXDzauyHprj8K8Vm7ssTV2";
+  const String buyer1UserId = "ELoD4InpgoOyEn42jNuhEVCjwON2";
+  const String buyer2UserId = "62uUzhsdpmNdUgzZe91johqXyRK2";
   const String buyer3UserId = "wXC0pE2agpZ51CFUgE7XfppzXqf2";
 
   // Common timestamp

@@ -8,7 +8,7 @@ import 'package:unithrift/explore/feature/feature.dart';
 import 'package:unithrift/explore/rental/popular_rental.dart';
 import 'package:unithrift/explore/service/campus_service.dart';
 import 'package:unithrift/wrapper.dart';
-//import 'populate_firestore.dart';
+//mport 'populate_firestore.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

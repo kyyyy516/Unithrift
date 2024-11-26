@@ -6,6 +6,7 @@ import 'package:unithrift/chatscreen.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'dart:math' show min; // Add this import at the top
+import 'package:unithrift/firestore_service.dart';
 
 class ItemServicePage extends StatefulWidget {
   final Map<String, dynamic> product;
@@ -1088,37 +1089,56 @@ class _ItemServicePageState extends State<ItemServicePage> {
                       final currentUser = FirebaseAuth.instance.currentUser;
                       if (currentUser != null) {
                         final sellerUserId = widget.product['userId'];
-                        final sellerEmail = widget.product['userEmail'];
-
-                        // Generate consistent chat ID
                         final chatId =
                             _generateChatId(currentUser.uid, sellerUserId);
 
-                        // Create or update chat room with seller info
+                        // Check if the chat room exists
+                        final chatDoc = await FirebaseFirestore.instance
+                            .collection('chats')
+                            .doc(chatId)
+                            .get();
+
+                        // Update product context or create a new chat room
+                        if (!chatDoc.exists) {
+                          // Create chat room if it doesn't exist
+                          await FirestoreService().createChatRoom(
+                            chatId,
+                            currentUser.uid,
+                            sellerUserId,
+                          );
+                        }
+
+                        // Always update the product metadata in the chat document
                         await FirebaseFirestore.instance
                             .collection('chats')
                             .doc(chatId)
                             .set({
-                          'users': [currentUser.uid, sellerUserId],
-                          'lastMessage': '',
-                          'lastMessageTime': FieldValue.serverTimestamp(),
-                          'unreadCount': {
-                            currentUser.uid: 0,
-                            sellerUserId: 0,
-                          },
-                          'participants': {
-                            currentUser.uid: currentUser.email,
-                            sellerUserId: sellerEmail,
-                          },
                           'productId': widget.product['productID'],
-                          'productName': widget.product['name']
+                          'productName': widget.product['name'],
+                          'productImage':
+                              widget.product['imageUrl1'], // Optional
+                          'lastProductInquiryTime':
+                              FieldValue.serverTimestamp(),
                         }, SetOptions(merge: true));
 
+                        // Send a message indicating interest in the product
+                        await FirestoreService().sendMessage(
+                          chatId,
+                          currentUser.uid,
+                          "I'm interested in your product: ${widget.product['name']} (RM ${widget.product['price']}).",
+                        );
+
+                        // Navigate to the chat screen
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => ChatScreen(chatId: chatId),
                           ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('Please log in to chat.')),
                         );
                       }
                     },

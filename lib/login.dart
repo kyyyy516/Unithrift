@@ -8,7 +8,7 @@ void main() {
     initialRoute: '/login', // Set your initial screen
     routes: {
       '/': (context) => const Register(),
-      '/forgot-password':(context) => const ForgotPassword(),
+      '/forgot-password': (context) => const ForgotPassword(),
       '/login': (context) => const Login(),
     },
   ));
@@ -229,37 +229,42 @@ class _LoginState extends State<Login> {
                       ),
                       // Forgot Password link at the bottom right of the input field
                       Padding(
-                        padding: const EdgeInsets.only(left: 0, top: 8), // Align with Password column
+                        padding: const EdgeInsets.only(
+                            left: 0, top: 8), // Align with Password column
                         child: RichText(
                           text: TextSpan(
                             text: "Forgot Password? ",
                             style: const TextStyle(
                               fontSize: 12,
-                              color: Color(0xFFA5AA8C), // Match your color style
+                              color:
+                                  Color(0xFFA5AA8C), // Match your color style
                             ),
                             children: [
                               WidgetSpan(
                                 child: GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => const ForgotPassword()),
-                                  );
-                                },
-                                child: const Text(
-                                  "Reset here",
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFFA5AA8C),
-                                    decoration: TextDecoration.underline, // Underline for link-like style
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const ForgotPassword()),
+                                    );
+                                  },
+                                  child: const Text(
+                                    "Reset here",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFFA5AA8C),
+                                      decoration: TextDecoration
+                                          .underline, // Underline for link-like style
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
                       const SizedBox(height: 40),
                       // Login Button
                       ElevatedButton(
