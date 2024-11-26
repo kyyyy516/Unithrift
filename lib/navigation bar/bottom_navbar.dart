@@ -4,12 +4,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:unithrift/cart/cart.dart';
 import 'package:unithrift/homepage.dart';
 import 'package:unithrift/notification_page.dart';
+import 'package:unithrift/sell/upload.dart';
 import '../explore/explore.dart';
 
 const List<Widget> pages = <Widget>[
   Explore(),
   NotificationPage(),
-  Text('Sell Page'),
+  ProductUploadPage(),
   Cart(true),
   Text('Account Page'),
   
@@ -31,6 +32,10 @@ void commonNavigate(BuildContext context, int index) {
       );
       break;
     case 2: // Sell
+    Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ProductUploadPage()),
+      );
       break;
   case 3:
       Navigator.push(
