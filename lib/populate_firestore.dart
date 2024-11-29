@@ -6,8 +6,8 @@ Future<void> populateFirestore() async {
   // Mock user IDs
   const String deniesUserId = "yM3jUpoXDzauyHprj8K8Vm7ssTV2";
   const String buyer1UserId = "ELoD4InpgoOyEn42jNuhEVCjwON2";
-  const String buyer2UserId = "62uUzhsdpmNdUgzZe91johqXyRK2";
-  const String buyer3UserId = "wXC0pE2agpZ51CFUgE7XfppzXqf2";
+  const String buyer2UserId = "UtthiVR5DShpnrNJQKkqc7EGozW2";
+  const String buyer3UserId = "iGTdEK6T37h29s1OmCKg4Ti4t6A2";
 
   // Common timestamp
   final timestamp = DateTime.now();
