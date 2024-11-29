@@ -301,7 +301,6 @@ void _pickImages() async {
   }
 }
 
-
   void _removeImage(int index) {
     setState(() {
       _imageFiles.removeAt(index);

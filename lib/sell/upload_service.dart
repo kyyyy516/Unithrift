@@ -246,30 +246,27 @@ class _ServiceUploadPageState extends State<ServiceUploadPage> {
     }
   }
 
-  void _pickImages() async {
-    final pickedFiles = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      allowMultiple: true,
-      withReadStream: false,
-      withData: false,
-    );
+  // Replace the _pickImages method with this:
+void _pickImages() async {
+  final picker = ImagePicker();
+  final pickedFiles = await picker.pickMultiImage();
 
-    if (pickedFiles != null) {
-      // Limit to MAX_IMAGES (3)
-      final limitedFiles = pickedFiles.files.take(MAX_IMAGES).toList();
-      
-      setState(() {
-        _imageFiles = limitedFiles.map((file) => File(file.path!)).toList();
-      });
+  if (pickedFiles != null) {
+    // Limit to MAX_IMAGES (3)
+    final limitedFiles = pickedFiles.take(MAX_IMAGES).toList();
+    
+    setState(() {
+      _imageFiles = limitedFiles.map((file) => File(file.path)).toList();
+    });
 
-      // Show a message if more than MAX_IMAGES were selected
-      if (pickedFiles.files.length > MAX_IMAGES) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Only $MAX_IMAGES images can be uploaded')),
-        );
-      }
+    // Show a message if more than MAX_IMAGES were selected
+    if (pickedFiles.length > MAX_IMAGES) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Only $MAX_IMAGES images can be uploaded')),
+      );
     }
   }
+}
 
   void _removeImage(int index) {
     setState(() {
