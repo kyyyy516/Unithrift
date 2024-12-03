@@ -244,7 +244,7 @@ class _RentalUploadPageState extends State<RentalUploadPage> {
       DocumentReference productDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser.uid)
-          .collection('rentals')
+          .collection('products')
           .add(productData);
 
       // Update the document with its own ID

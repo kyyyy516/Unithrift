@@ -206,7 +206,7 @@ class _ServiceUploadPageState extends State<ServiceUploadPage> {
       DocumentReference productDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser.uid)
-          .collection('services')
+          .collection('products')
           .add(productData);
 
       // Update the productId with the actual document ID
