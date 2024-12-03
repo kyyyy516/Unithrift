@@ -97,6 +97,37 @@ class _ItemServicePageState extends State<ItemServicePage> {
     }
   }
 
+  String getTimeAgo(dynamic timestamp) {
+    if (timestamp == null) return 'Recently';
+
+    DateTime uploadTime;
+    if (timestamp is Timestamp) {
+      uploadTime = timestamp.toDate();
+    } else if (timestamp is int) {
+      uploadTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
+    } else {
+      return 'Recently';
+    }
+
+    Duration difference = DateTime.now().difference(uploadTime);
+
+    if (difference.inSeconds < 60) {
+      return '${difference.inSeconds} seconds ago';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} minutes ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours} hours ago';
+    } else if (difference.inDays < 30) {
+      return '${difference.inDays} days ago';
+    } else if (difference.inDays < 365) {
+      int months = (difference.inDays / 30).floor();
+      return '$months months ago';
+    } else {
+      int years = (difference.inDays / 365).floor();
+      return '$years years ago';
+    }
+  }
+
   void _showServiceBottomSheet() async {
     // Check if item exists in cart first
     final currentUser = FirebaseAuth.instance.currentUser;
@@ -950,6 +981,16 @@ class _ItemServicePageState extends State<ItemServicePage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+                      const SizedBox(height: 5),
+                      // Add this where you display product details
+                      Text(
+                        "Posted ${getTimeAgo(widget.product['timestamp'] ?? widget.product['createdAt'])}",
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey,
+                        ),
+                      ),
+
                       const SizedBox(height: 5),
                       Text(
                         "RM ${widget.product['price'] ?? '0'}",

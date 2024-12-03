@@ -10,7 +10,7 @@ import 'dart:convert';
 
 class ProductUploadPage extends StatefulWidget {
   const ProductUploadPage({super.key});
-  
+
   @override
   State<ProductUploadPage> createState() => _ProductUploadPageState();
 }
@@ -21,7 +21,7 @@ class _ProductUploadPageState extends State<ProductUploadPage> {
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _detailsController = TextEditingController();
   final TextEditingController _brandController = TextEditingController();
-  
+
   // Support up to 3 images
   List<File> _imageFiles = [];
   List<String> _imageUrls = [];
@@ -40,16 +40,16 @@ class _ProductUploadPageState extends State<ProductUploadPage> {
 
   // Categories list
   final List<String> _categories = [
-  'Books',
-  'Clothes',
-  'Electronics',
-  'Furniture',
-  'Mobile Phones & Gadgets',
-  'Beauty & Personal Care',
-  'Tickets',
-  'Stationary',
-  'Other'
-];
+    'Books',
+    'Clothes',
+    'Electronics',
+    'Furniture',
+    'Mobile Phones & Gadgets',
+    'Beauty & Personal Care',
+    'Tickets',
+    'Stationary',
+    'Other'
+  ];
   // Selected category
   String? _selectedCategory;
 
@@ -59,7 +59,8 @@ class _ProductUploadPageState extends State<ProductUploadPage> {
     final price = double.tryParse(_priceController.text.trim());
     if (price == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid price. Please enter a valid number.')),
+        const SnackBar(
+            content: Text('Invalid price. Please enter a valid number.')),
       );
       return false;
     }
@@ -74,7 +75,8 @@ class _ProductUploadPageState extends State<ProductUploadPage> {
 
     if (price > 1000000) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Price is too high. Maximum price is 1,000,000.')),
+        const SnackBar(
+            content: Text('Price is too high. Maximum price is 1,000,000.')),
       );
       return false;
     }
@@ -83,14 +85,16 @@ class _ProductUploadPageState extends State<ProductUploadPage> {
     final name = _nameController.text.trim();
     if (name.length < 3) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Product name must be at least 3 characters long.')),
+        const SnackBar(
+            content: Text('Product name must be at least 3 characters long.')),
       );
       return false;
     }
 
     if (name.length > 100) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Product name must be less than 100 characters.')),
+        const SnackBar(
+            content: Text('Product name must be less than 100 characters.')),
       );
       return false;
     }
@@ -99,7 +103,8 @@ class _ProductUploadPageState extends State<ProductUploadPage> {
     final details = _detailsController.text.trim();
     if (details.isNotEmpty && details.length > 500) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Product details must be less than 500 characters.')),
+        const SnackBar(
+            content: Text('Product details must be less than 500 characters.')),
       );
       return false;
     }
@@ -163,145 +168,143 @@ class _ProductUploadPageState extends State<ProductUploadPage> {
       final jsonData = jsonDecode(responseData.body);
       return jsonData['data']['url'];
     } else {
-      throw Exception('Failed to upload image to imgbb: ${responseData.statusCode} - ${responseData.body}');
+      throw Exception(
+          'Failed to upload image to imgbb: ${responseData.statusCode} - ${responseData.body}');
     }
   }
 
   Future<void> _uploadProduct() async {
-  try {
-    // Validate all required fields first
-    if (_selectedCategory == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a category')),
-      );
-      return;
-    }
+    try {
+      // Validate all required fields first
+      if (_selectedCategory == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select a category')),
+        );
+        return;
+      }
 
-    if (_selectedCondition == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a condition')),
-      );
-      return;
-    }
+      if (_selectedCondition == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select a condition')),
+        );
+        return;
+      }
 
-    if (!_validateProductDetails()) {
-      return;
-    }
-    
-    if (!_formKey.currentState!.validate()) return;
+      if (!_validateProductDetails()) {
+        return;
+      }
 
-    if (_imageFiles.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one image')),
-      );
-      return;
-    }
+      if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isUploading = true;
-    });
+      if (_imageFiles.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select at least one image')),
+        );
+        return;
+      }
 
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please login first')),
-      );
-      return;
-    }
-
-    // Upload images to imgbb
-    _imageUrls = await Future.wait(
-      _imageFiles.map((imageFile) => uploadToImgbb(imageFile))
-    );
-
-    // Prepare product data with null safety
-    final productData = {
-      'name': _nameController.text.trim(),
-      'price': double.parse(_priceController.text.trim()),
-      'details': _detailsController.text.trim(),
-      'brand': _brandController.text.trim(),
-      'category': _selectedCategory!,
-      'condition': _selectedCondition!,
-      'type': 'feature',
-      'userId': currentUser.uid,
-      'username': currentUser.displayName ?? 'Anonymous',
-      'userEmail': currentUser.email ?? 'no-email',
-      'createdAt': FieldValue.serverTimestamp(),
-      //'productId': '',
-    };
-
-    // Add image URLs
-    for (var i = 0; i < _imageUrls.length; i++) {
-      productData['imageUrl${i + 1}'] = _imageUrls[i];
-    }
-
-    // Upload to Firestore and get the document reference
-    DocumentReference productDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser.uid)
-        .collection('products')
-        .add(productData);
-
-    // Update the document with its own ID
-    await productDoc.update({
-      'productId': productDoc.id
-    });
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${_nameController.text} uploaded successfully!')),
-      );
-      
-      _formKey.currentState!.reset();
-      _nameController.clear();
-      _priceController.clear();
-      _detailsController.clear();
-      _brandController.clear();
-      
       setState(() {
-        _imageFiles.clear();
-        _imageUrls.clear();
-        _isUploading = false;
-        _selectedCategory = null;
-        _selectedCondition = null;
+        _isUploading = true;
       });
-    }
-  } catch (e) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Upload failed: $e')),
-      );
-      setState(() {
-        _isUploading = false;
-      });
+
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please login first')),
+        );
+        return;
+      }
+
+      // Upload images to imgbb
+      _imageUrls = await Future.wait(
+          _imageFiles.map((imageFile) => uploadToImgbb(imageFile)));
+
+      // Prepare product data with null safety
+      final productData = {
+        'name': _nameController.text.trim(),
+        'price': double.parse(_priceController.text.trim()),
+        'details': _detailsController.text.trim(),
+        'brand': _brandController.text.trim(),
+        'category': _selectedCategory!,
+        'condition': _selectedCondition!,
+        'type': 'feature',
+        'userId': currentUser.uid,
+        'username': currentUser.displayName ?? 'Anonymous',
+        'userEmail': currentUser.email ?? 'no-email',
+        'createdAt': FieldValue.serverTimestamp(),
+        'timestamp': DateTime.now().millisecondsSinceEpoch, //yyyyyyyyyyyyyy
+
+        //'productId': '',
+      };
+
+      // Add image URLs
+      for (var i = 0; i < _imageUrls.length; i++) {
+        productData['imageUrl${i + 1}'] = _imageUrls[i];
+      }
+
+      // Upload to Firestore and get the document reference
+      DocumentReference productDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('products')
+          .add(productData);
+
+      // Update the document with its own ID
+      await productDoc.update({'productId': productDoc.id});
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('${_nameController.text} uploaded successfully!')),
+        );
+
+        _formKey.currentState!.reset();
+        _nameController.clear();
+        _priceController.clear();
+        _detailsController.clear();
+        _brandController.clear();
+
+        setState(() {
+          _imageFiles.clear();
+          _imageUrls.clear();
+          _isUploading = false;
+          _selectedCategory = null;
+          _selectedCondition = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Upload failed: $e')),
+        );
+        setState(() {
+          _isUploading = false;
+        });
+      }
     }
   }
-}
 
+  // Replace the _pickImages method with this:
+  void _pickImages() async {
+    final picker = ImagePicker();
+    final pickedFiles = await picker.pickMultiImage();
 
+    if (pickedFiles != null) {
+      // Limit to MAX_IMAGES (3)
+      final limitedFiles = pickedFiles.take(MAX_IMAGES).toList();
 
- // Replace the _pickImages method with this:
-void _pickImages() async {
-  final picker = ImagePicker();
-  final pickedFiles = await picker.pickMultiImage();
+      setState(() {
+        _imageFiles = limitedFiles.map((file) => File(file.path)).toList();
+      });
 
-  if (pickedFiles != null) {
-    // Limit to MAX_IMAGES (3)
-    final limitedFiles = pickedFiles.take(MAX_IMAGES).toList();
-    
-    setState(() {
-      _imageFiles = limitedFiles.map((file) => File(file.path)).toList();
-    });
-
-    // Show a message if more than MAX_IMAGES were selected
-    if (pickedFiles.length > MAX_IMAGES) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Only $MAX_IMAGES images can be uploaded')),
-      );
+      // Show a message if more than MAX_IMAGES were selected
+      if (pickedFiles.length > MAX_IMAGES) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Only $MAX_IMAGES images can be uploaded')),
+        );
+      }
     }
   }
-}
-
 
   void _removeImage(int index) {
     setState(() {
@@ -324,28 +327,32 @@ void _pickImages() async {
                   children: [
                     const SizedBox(height: 1),
                     const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 5.0),
-                    child: Text(
-                      "What's your item?",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 28.0,
+                      padding: EdgeInsets.symmetric(vertical: 5.0),
+                      child: Text(
+                        "What's your item?",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 28.0,
+                        ),
                       ),
                     ),
-                  ),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         foregroundColor: Colors.white, // Text color
-                        backgroundColor: const Color(0xFF808569), // Button background color
+                        backgroundColor:
+                            const Color(0xFF808569), // Button background color
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10), // Rounded corners
+                          borderRadius:
+                              BorderRadius.circular(10), // Rounded corners
                         ),
                         elevation: 3, // Shadow elevation
                       ),
                       icon: const Icon(Icons.upload_file),
-                      label: Text('Select Images (${_imageFiles.length}/$MAX_IMAGES)'),
-                      onPressed: _imageFiles.length < MAX_IMAGES ? _pickImages : null,
+                      label: Text(
+                          'Select Images (${_imageFiles.length}/$MAX_IMAGES)'),
+                      onPressed:
+                          _imageFiles.length < MAX_IMAGES ? _pickImages : null,
                     ),
                     if (_imageFiles.isNotEmpty)
                       Padding(
@@ -361,7 +368,8 @@ void _pickImages() async {
                                   GestureDetector(
                                     onTap: () => _showImagePreview(imageFile),
                                     child: Padding(
-                                      padding: const EdgeInsets.only(right: 8.0),
+                                      padding:
+                                          const EdgeInsets.only(right: 8.0),
                                       child: Image.file(
                                         imageFile,
                                         width: 120,
@@ -374,7 +382,8 @@ void _pickImages() async {
                                     top: 0,
                                     right: 0,
                                     child: IconButton(
-                                      icon: const Icon(Icons.close, color: Colors.red),
+                                      icon: const Icon(Icons.close,
+                                          color: Colors.red),
                                       onPressed: () => _removeImage(index),
                                     ),
                                   ),
@@ -484,10 +493,12 @@ void _pickImages() async {
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         foregroundColor: Colors.white, // Text color
-                        backgroundColor: const Color(0xFF808569), // Button background color
+                        backgroundColor:
+                            const Color(0xFF808569), // Button background color
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10), // Rounded corners
+                          borderRadius:
+                              BorderRadius.circular(10), // Rounded corners
                         ),
                         elevation: 3, // Shadow elevation
                       ),
