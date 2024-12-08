@@ -4,15 +4,23 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:unithrift/cart/cart.dart';
 import 'package:unithrift/homepage.dart';
 import 'package:unithrift/notification_page.dart';
-import 'package:unithrift/sell/upload_main.dart';
+import 'package:unithrift/sell/account_test.dart';
+import 'package:unithrift/sell/product_test.dart';
+//import 'package:unithrift/sell/try_upload.dart';
+//import 'package:unithrift/sell/upload_main.dart';
 import '../explore/explore.dart';
+import '../sell/upload_main.dart';
+
 
 const List<Widget> pages = <Widget>[
   Explore(),
   NotificationPage(),
-  MainUploadPage(),
+  //TryUploadPage(),
+  //MainUploadPage(),
+  TestPage(),
   Cart(true),
-  Text('Account Page'),
+  //Text('Account Page'),
+  AccountPage(),
   
 ];
 
@@ -34,18 +42,28 @@ void commonNavigate(BuildContext context, int index) {
     case 2: // Sell
     Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const MainUploadPage()),
+        MaterialPageRoute(builder: (context) => const TestPage()),
       );
       break;
-  case 3:
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const Cart(false),
-        ),
-      );
-      break;
-  }
+    case 3:
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const Cart(false),
+          ),
+        );
+        break;
+    case 4: // Account
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const AccountPage(), // Replace with your account page;
+          ),
+        );
+        break;
+    }
+    
+  
 }
 
 Widget mainBottomNavBar(int selectedIndex, Function(int) onItemTapped) {
