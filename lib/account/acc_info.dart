@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:unithrift/account/edit_info.dart';
+import 'package:unithrift/account/my_sales.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
@@ -350,7 +351,7 @@ class _AccountInfoState extends State<AccountInfo> {
                     Expanded(
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[200],
+                          backgroundColor: const Color(0xFFE5E8D9),
                           foregroundColor: Colors.black,
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           shape: RoundedRectangleBorder(
@@ -361,7 +362,7 @@ class _AccountInfoState extends State<AccountInfo> {
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.shopping_bag),
+                            Icon(Icons.shopping_bag_outlined),
                             SizedBox(width: 8),
                             Text('My Order'),
                           ],
@@ -372,7 +373,7 @@ class _AccountInfoState extends State<AccountInfo> {
                     Expanded(
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[200],
+                          backgroundColor: const Color(0xFFE5E8D9),
                           foregroundColor: Colors.black,
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           shape: RoundedRectangleBorder(
@@ -383,9 +384,38 @@ class _AccountInfoState extends State<AccountInfo> {
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.favorite),
+                            Icon(Icons.favorite_border_outlined),
                             SizedBox(width: 8),
                             Text('My Likes'),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFE5E8D9),
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const MySalesPage(),
+                            ),
+                          );
+                        },
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.storefront),
+                            SizedBox(width: 8),
+                            Text('My Sales'),
                           ],
                         ),
                       ),

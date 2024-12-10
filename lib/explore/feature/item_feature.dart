@@ -202,6 +202,126 @@ class _ItemFeaturePageState extends State<ItemFeaturePage> {
     }
   }*/
 
+  void _buyNow(Map<String, dynamic> product) async {
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please log in first')),
+        );
+        return;
+      }
+
+      // Fetch buyer's details from Firestore
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+
+      if (!userDoc.exists) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to fetch user details')),
+        );
+        return;
+      }
+
+      final buyerData = userDoc.data() as Map<String, dynamic>;
+
+      // Create order details
+      final orderData = {
+        'productID': product['productID'],
+        'name': product['name'],
+        'price': product['price'],
+        'imageUrl1': product['imageUrl1'], // Ensure this field is populated
+        'condition': product['condition'],
+        'buyerId': currentUser.uid,
+        'buyerName': buyerData['username'] ?? 'Unknown Buyer',
+        'buyerEmail': buyerData['email'] ?? 'No Email',
+        'sellerUserId': product['userId'],
+        'sellerName': product['username'],
+        'sellerEmail': product['userEmail'],
+        'status': 'Pending', // Initial status of the order
+        'orderDate': FieldValue.serverTimestamp(),
+      };
+
+      // Store order in both buyer's and seller's subcollections
+      final orderRef = FirebaseFirestore.instance.collection('orders').doc();
+
+      // Add order to buyer's subcollection
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('orders')
+          .doc(orderRef.id)
+          .set(orderData);
+
+      // Add order to seller's subcollection
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(product['userId'])
+          .collection('sales')
+          .doc(orderRef.id)
+          .set(orderData);
+
+      // Add notifications for buyer and seller with product image URL
+      await _addNotification(
+        userId: currentUser.uid,
+        title: 'Order Placed',
+        message: 'Your order for ${product['name']} has been placed.',
+        productImageUrl: product['imageUrl1'], // Pass product image URL
+        type: 'track', // For buyer notifications
+      );
+
+      await _addNotification(
+        userId: product['userId'],
+        title: 'New Order',
+        message: 'You have a new order for ${product['name']}.',
+        productImageUrl: product['imageUrl1'], // Pass product image URL
+        type: 'manage', // For seller notifications
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Order placed successfully!'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+
+      // Navigate back or refresh the page if necessary
+      Navigator.pop(context);
+    } catch (e) {
+      print('Error placing order: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error placing order: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _addNotification({
+    required String userId,
+    required String title,
+    required String message,
+    String? productImageUrl, // Optional parameter for product image URL
+    required String type, // Add type to categorize notifications
+  }) async {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('notifications')
+        .add({
+      'title': title,
+      'message': message,
+      'timestamp': FieldValue.serverTimestamp(),
+      'isRead': false,
+      'productImageUrl': productImageUrl, // Add product image URL
+      'type': type, // Specify notification type
+    });
+  }
+
   void _addToCart(Map<String, dynamic> product, String type) async {
     try {
       final currentUser = FirebaseAuth.instance.currentUser;
@@ -896,28 +1016,33 @@ class _ItemFeaturePageState extends State<ItemFeaturePage> {
                             .doc(chatId)
                             .get();
 
-                        // Update product context or create a new chat room
+                        // Create or update the chat room with product-specific details
                         if (!chatDoc.exists) {
                           // Create chat room if it doesn't exist
-                          await FirestoreService().createChatRoom(
-                            chatId,
-                            currentUser.uid,
-                            sellerUserId,
-                          );
+                          await FirebaseFirestore.instance
+                              .collection('chats')
+                              .doc(chatId)
+                              .set({
+                            'users': [currentUser.uid, sellerUserId],
+                            'createdAt': FieldValue.serverTimestamp(),
+                            'contextType':
+                                'product', // Indicates chat initiated from product page
+                            'productId': widget.product['productID'],
+                            'productName': widget.product['name'],
+                            'productImage': widget.product['imageUrl1'],
+                          });
+                        } else {
+                          // Update product details in the chat room
+                          await FirebaseFirestore.instance
+                              .collection('chats')
+                              .doc(chatId)
+                              .update({
+                            'contextType': 'product', // Ensure correct context
+                            'productId': widget.product['productID'],
+                            'productName': widget.product['name'],
+                            'productImage': widget.product['imageUrl1'],
+                          });
                         }
-
-                        // Always update the product metadata in the chat document
-                        await FirebaseFirestore.instance
-                            .collection('chats')
-                            .doc(chatId)
-                            .set({
-                          'productId': widget.product['productID'],
-                          'productName': widget.product['name'],
-                          'productImage':
-                              widget.product['imageUrl1'], // Optional
-                          'lastProductInquiryTime':
-                              FieldValue.serverTimestamp(),
-                        }, SetOptions(merge: true));
 
                         // Send a message indicating interest in the product
                         await FirestoreService().sendMessage(
@@ -946,7 +1071,7 @@ class _ItemFeaturePageState extends State<ItemFeaturePage> {
                     flex: 2,
                     child: ElevatedButton(
                       onPressed: () {
-                        // Buy now functionality
+                        _buyNow(widget.product);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFB1BA8E),

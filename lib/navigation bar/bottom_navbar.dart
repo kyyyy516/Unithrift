@@ -11,7 +11,6 @@ import 'package:unithrift/sell/product_test.dart';
 import '../explore/explore.dart';
 import '../sell/upload_main.dart';
 
-
 const List<Widget> pages = <Widget>[
   Explore(),
   NotificationPage(),
@@ -21,7 +20,6 @@ const List<Widget> pages = <Widget>[
   Cart(true),
   //Text('Account Page'),
   AccountInfo(),
-  
 ];
 
 void commonNavigate(BuildContext context, int index) {
@@ -40,30 +38,29 @@ void commonNavigate(BuildContext context, int index) {
       );
       break;
     case 2: // Sell
-    Navigator.push(
+      Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const TestPage()),
       );
       break;
     case 3:
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const Cart(false),
-          ),
-        );
-        break;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const Cart(false),
+        ),
+      );
+      break;
     case 4: // Account
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const AccountInfo(), // Replace with your account page;
-          ),
-        );
-        break;
-    }
-    
-  
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              const AccountInfo(), // Replace with your account page;
+        ),
+      );
+      break;
+  }
 }
 
 Widget mainBottomNavBar(int selectedIndex, Function(int) onItemTapped) {
@@ -83,8 +80,8 @@ Widget mainBottomNavBar(int selectedIndex, Function(int) onItemTapped) {
         label: 'Update',
         index: 1,
         stream: FirebaseFirestore.instance
-            .collection('notifications')
-            .doc(user!.uid)
+            .collection('users')
+            .doc(user!.uid) // Reference the correct user document
             .collection('notifications')
             .where('isRead', isEqualTo: false)
             .snapshots(),
