@@ -15,7 +15,7 @@ void main() {
 }
 
 class RegisterSuccessPage extends StatelessWidget {
-  const RegisterSuccessPage({Key? key}) : super(key: key);
+  const RegisterSuccessPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -61,25 +61,25 @@ class RegisterSuccessPage extends StatelessWidget {
             ),
             const SizedBox(height: 40),
             ElevatedButton(
-  onPressed: () {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const Homepage()),
-      (route) => false, // Clear all previous routes
-    );
-  },
-  style: ElevatedButton.styleFrom(
-    backgroundColor: const Color(0xFF808569),
-    minimumSize: const Size(double.infinity, 50),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(10),
-    ),
-  ),
-  child: const Text(
-    "Explore Now",
-    style: TextStyle(fontSize: 16, color: Colors.white),
-  ),
-),
+              onPressed: () {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const Homepage()),
+                  (route) => false, // Clear all previous routes
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF808569),
+                minimumSize: const Size(double.infinity, 50),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                "Explore Now",
+                style: TextStyle(fontSize: 16, color: Colors.white),
+              ),
+            ),
           ],
         ),
       ),

@@ -14,7 +14,7 @@ void main() {
 }
 
 class ForgotPassword extends StatefulWidget {
-  const ForgotPassword({Key? key}) : super(key: key);
+  const ForgotPassword({super.key});
 
   @override
   State<ForgotPassword> createState() => _ForgotPasswordState();
@@ -26,51 +26,53 @@ class _ForgotPasswordState extends State<ForgotPassword> {
   bool isLoading = false;
 
   Future<void> sendPasswordResetEmail() async {
-  if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) return;
 
-  setState(() {
-    isLoading = true;
-  });
-
-  final authService = AuthService(); // Use AuthService for reset functionality
-
-  try {
-    await authService.sendPasswordResetEmail(emailController.text.trim());
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Password reset email sent! Check your inbox.'),
-      ),
-    );
-
-    // Navigate to login screen with a success flag
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const Login(successMessage: "Please log in with your new password."),
-      ),
-    );
-  } on FirebaseAuthException catch (e) {
-    String errorMessage = 'An error occurred. Please try again.';
-    if (e.code == 'user-not-found') {
-      errorMessage = 'No user found with this email.';
-    } else if (e.code == 'invalid-email') {
-      errorMessage = 'Invalid email address.';
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(errorMessage)),
-    );
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error: $e')),
-    );
-  } finally {
     setState(() {
-      isLoading = false;
+      isLoading = true;
     });
+
+    final authService =
+        AuthService(); // Use AuthService for reset functionality
+
+    try {
+      await authService.sendPasswordResetEmail(emailController.text.trim());
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Password reset email sent! Check your inbox.'),
+        ),
+      );
+
+      // Navigate to login screen with a success flag
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const Login(
+              successMessage: "Please log in with your new password."),
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = 'An error occurred. Please try again.';
+      if (e.code == 'user-not-found') {
+        errorMessage = 'No user found with this email.';
+      } else if (e.code == 'invalid-email') {
+        errorMessage = 'Invalid email address.';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -151,12 +153,6 @@ class _ForgotPasswordState extends State<ForgotPassword> {
                     ),
                     ElevatedButton(
                       onPressed: isLoading ? null : sendPasswordResetEmail,
-                      child: isLoading
-                          ? const CircularProgressIndicator(
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(Colors.white),
-                            )
-                          : const Text("Reset Password"),
                       style: ElevatedButton.styleFrom(
                         minimumSize: const Size(327, 50),
                         backgroundColor: const Color(0xFF808569),
@@ -167,25 +163,34 @@ class _ForgotPasswordState extends State<ForgotPassword> {
                         ),
                         textStyle: const TextStyle(fontWeight: FontWeight.bold),
                       ),
+                      child: isLoading
+                          ? const CircularProgressIndicator(
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            )
+                          : const Text("Reset Password"),
                     ),
                     const SizedBox(height: 20),
                     GestureDetector(
-  onTap: () {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const Login()), // Replace with your Login page
-      (Route<dynamic> route) => false, // Removes all routes from the stack
-    );
-  },
-  child: const Text(
-    "Back to Login",
-    style: TextStyle(
-      fontSize: 12,
-      color: Color(0xFFA5AA8C),
-      decoration: TextDecoration.underline,
-    ),
-  ),
-),
+                      onTap: () {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  const Login()), // Replace with your Login page
+                          (Route<dynamic> route) =>
+                              false, // Removes all routes from the stack
+                        );
+                      },
+                      child: const Text(
+                        "Back to Login",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFFA5AA8C),
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 20),
                   ],
                 ),
@@ -218,7 +223,7 @@ class _ForgotPasswordState extends State<ForgotPassword> {
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
   }) {
-    return Container(
+    return SizedBox(
       width: 327,
       height: 46,
       child: TextFormField(

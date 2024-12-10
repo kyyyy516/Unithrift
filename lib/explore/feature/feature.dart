@@ -1,8 +1,6 @@
 import 'package:carousel_slider/carousel_slider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart' hide CarouselController;
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:unithrift/cart/cart.dart';
 import 'package:unithrift/explore/feature/item_feature.dart';
 import 'package:unithrift/navigation%20bar/bottom_navbar.dart';
 import 'package:unithrift/navigation%20bar/common_appbar.dart';
@@ -19,8 +17,7 @@ class _FeaturePageState extends State<FeaturePage> {
   String searchQuery = '';
   String selectedCategory = 'All';
   int _selectedIndex = 0;
-    Map<String, bool> favoriteStatus = {};//favourite
-
+  Map<String, bool> favoriteStatus = {}; //favourite
 
   @override
   void initState() {
@@ -39,36 +36,33 @@ class _FeaturePageState extends State<FeaturePage> {
     });
   }
 
- Stream<List<Map<String, dynamic>>> getFeatureProducts() {
-  return FirebaseFirestore.instance
-      .collection('users')
-      .snapshots()
-      .asyncMap((usersSnapshot) async {
-    List<Map<String, dynamic>> allProducts = [];
+  Stream<List<Map<String, dynamic>>> getFeatureProducts() {
+    return FirebaseFirestore.instance
+        .collection('users')
+        .snapshots()
+        .asyncMap((usersSnapshot) async {
+      List<Map<String, dynamic>> allProducts = [];
 
-    for (var userDoc in usersSnapshot.docs) {
-      var productsSnapshot = await userDoc.reference
-          .collection('products')
-          .where('type', isEqualTo: 'feature')
-          .get();
+      for (var userDoc in usersSnapshot.docs) {
+        var productsSnapshot = await userDoc.reference
+            .collection('products')
+            .where('type', isEqualTo: 'feature')
+            .get();
 
-      for (var productDoc in productsSnapshot.docs) {
-        var productData = productDoc.data();
-        // Include all necessary user and product information
-        productData['productID'] = productDoc.id;
-        productData['userId'] = userDoc.id;
-        productData['userEmail'] = userDoc.data()['email'];
-        productData['username'] = userDoc.data()['username'];
-        allProducts.add(productData);
+        for (var productDoc in productsSnapshot.docs) {
+          var productData = productDoc.data();
+          // Include all necessary user and product information
+          productData['productID'] = productDoc.id;
+          productData['userId'] = userDoc.id;
+          productData['userEmail'] = userDoc.data()['email'];
+          productData['username'] = userDoc.data()['username'];
+          allProducts.add(productData);
+        }
       }
-    }
 
-    return allProducts;
-  });
-}
-
-
- 
+      return allProducts;
+    });
+  }
 
   Widget categoryBox(String category) {
     return GestureDetector(
@@ -402,37 +396,38 @@ class _FeaturePageState extends State<FeaturePage> {
                           fontSize: 16,
                         ),
                       ),
-                     StatefulBuilder(//favourittttttttttee
-  builder: (context, setInnerState) {
-    return Container(
-      margin: const EdgeInsets.only(right: 5),
-      height: 35,
-      width: 35,
-      decoration: const BoxDecoration(
-        color: Color(0xFF424632),
-        shape: BoxShape.circle,
-      ),
-      child: IconButton(
-        padding: EdgeInsets.zero,
-        iconSize: 20,
-        icon: Icon(
-          favoriteStatus[product['productID']] ?? false 
-              ? Icons.favorite 
-              : Icons.favorite_border,
-          color: favoriteStatus[product['productID']] ?? false 
-              ? Colors.red 
-              : Colors.white,
-        ),
-        onPressed: () {
-          setInnerState(() {
-            favoriteStatus[product['productID']] = 
-                !(favoriteStatus[product['productID']] ?? false);
-          });
-        },
-      ),
-    );
-  }
-)
+                      StatefulBuilder(//favourittttttttttee
+                          builder: (context, setInnerState) {
+                        return Container(
+                          margin: const EdgeInsets.only(right: 5),
+                          height: 35,
+                          width: 35,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF424632),
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            iconSize: 20,
+                            icon: Icon(
+                              favoriteStatus[product['productID']] ?? false
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color:
+                                  favoriteStatus[product['productID']] ?? false
+                                      ? Colors.red
+                                      : Colors.white,
+                            ),
+                            onPressed: () {
+                              setInnerState(() {
+                                favoriteStatus[product['productID']] =
+                                    !(favoriteStatus[product['productID']] ??
+                                        false);
+                              });
+                            },
+                          ),
+                        );
+                      })
                     ],
                   ),
                 ],

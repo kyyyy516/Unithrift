@@ -1,11 +1,7 @@
-import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart' hide CarouselController;
-import 'package:video_player/video_player.dart';
-import 'package:chewie/chewie.dart';
-import 'dart:math' show min; // Add this import at the top
-import 'package:unithrift/firestore_service.dart';
+// Add this import at the top
 
 class EditProductPage extends StatefulWidget {
   //final Map<String, dynamic> product;
@@ -13,7 +9,7 @@ class EditProductPage extends StatefulWidget {
   final String userID;
 
   const EditProductPage({
-    super.key, 
+    super.key,
     required this.productID,
     required this.userID,
   });
@@ -33,14 +29,13 @@ class _EditProductPageState extends State<EditProductPage> {
   late TextEditingController _brandController;
   late String _category = 'Uncategorized';
   late String _condition = 'Unknown';
-  
+
   late String _initialName;
   late String _initialPrice;
   late String _initialDetails;
   late String _initialBrand;
   late String _initialCategory;
   late String _initialCondition;
-  
 
   @override
   void initState() {
@@ -52,7 +47,7 @@ class _EditProductPageState extends State<EditProductPage> {
     _fetchProductData();
   }
 
-    Future<void> _fetchProductData() async {
+  Future<void> _fetchProductData() async {
     try {
       final doc = await FirebaseFirestore.instance
           .collection('users')
@@ -65,7 +60,8 @@ class _EditProductPageState extends State<EditProductPage> {
         setState(() {
           _productData = doc.data();
           _nameController.text = _productData?['name'] ?? '';
-          _priceController.text = (_productData?['price'] ?? 0.0).toStringAsFixed(2);
+          _priceController.text =
+              (_productData?['price'] ?? 0.0).toStringAsFixed(2);
           _detailsController.text = _productData?['details'] ?? '';
           _brandController.text = _productData?['brand'] ?? '';
           _category = _productData?['category'] ?? 'Uncategorized';
@@ -159,8 +155,6 @@ class _EditProductPageState extends State<EditProductPage> {
     }
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -170,82 +164,87 @@ class _EditProductPageState extends State<EditProductPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Form(
-            key: _formKey,
-            child: ListView(
-              padding: const EdgeInsets.all(16.0),
-              children: [
-                TextFormField(
-                  controller: _nameController,
-                  cursorColor: Color(0xFF808569),
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Color(0xFF808569)), // Your custom color
+              key: _formKey,
+              child: ListView(
+                padding: const EdgeInsets.all(16.0),
+                children: [
+                  TextFormField(
+                    controller: _nameController,
+                    cursorColor: Color(0xFF808569),
+                    decoration: const InputDecoration(
+                      labelText: 'Name',
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                            color: Color(0xFF808569)), // Your custom color
+                      ),
+                      labelStyle:
+                          TextStyle(color: Colors.grey), // Normal label color
+                      floatingLabelStyle: TextStyle(
+                          color: Color(0xFF808569)), // Focused label color
                     ),
-                    labelStyle: TextStyle(color: Colors.grey), // Normal label color
-                    floatingLabelStyle: TextStyle(color: Color(0xFF808569)), // Focused label color
-                    
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'Please enter a name' : null,
                   ),
+                  TextFormField(
+                    controller: _priceController,
+                    decoration: const InputDecoration(
+                      labelText: 'Price',
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                            color: Color(0xFF808569)), // Your custom color
+                      ),
+                      labelStyle:
+                          TextStyle(color: Colors.grey), // Normal label color
+                      floatingLabelStyle: TextStyle(
+                          color: Color(0xFF808569)), // Focused label color
+                    ),
+                    keyboardType: TextInputType.number,
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'Please enter a price' : null,
+                  ),
+                  TextFormField(
+                    controller: _detailsController,
+                    decoration: const InputDecoration(
+                      labelText: 'Details',
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                            color: Color(0xFF808569)), // Your custom color
+                      ),
+                      labelStyle:
+                          TextStyle(color: Colors.grey), // Normal label color
+                      floatingLabelStyle: TextStyle(
+                          color: Color(0xFF808569)), // Focused label color
+                    ),
+                    maxLines: 3,
+                  ),
+                  TextFormField(
+                    controller: _brandController,
+                    decoration: const InputDecoration(
+                      labelText: 'Brand/Edition',
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                            color: Color(0xFF808569)), // Your custom color
+                      ),
+                      labelStyle:
+                          TextStyle(color: Colors.grey), // Normal label color
+                      floatingLabelStyle: TextStyle(
+                          color: Color(0xFF808569)), // Focused label color
+                    ),
+                    maxLines: 3,
+                  ),
+                  // Add more fields as needed
+                  const SizedBox(height: 20),
 
-                  validator: (value) =>
-                      value?.isEmpty ?? true ? 'Please enter a name' : null,
-                ),
-                TextFormField(
-                  controller: _priceController,
-                  decoration: const InputDecoration(
-                    labelText: 'Price',
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Color(0xFF808569)), // Your custom color
+                  ElevatedButton(
+                    onPressed: _updateProduct,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF808569),
                     ),
-                    labelStyle: TextStyle(color: Colors.grey), // Normal label color
-                    floatingLabelStyle: TextStyle(color: Color(0xFF808569)), // Focused label color
+                    child: const Text('Update'),
                   ),
-                  keyboardType: TextInputType.number,
-                  validator: (value) =>
-                      value?.isEmpty ?? true ? 'Please enter a price' : null,
-                ),
-                TextFormField(
-                  controller: _detailsController,
-                  decoration: const InputDecoration(
-                    labelText: 'Details',
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Color(0xFF808569)), // Your custom color
-                    ),
-                    labelStyle: TextStyle(color: Colors.grey), // Normal label color
-                    floatingLabelStyle: TextStyle(color: Color(0xFF808569)), // Focused label color
-                    
-                  
-                  ),
-                  maxLines: 3,
-                ),
-                TextFormField(
-                  controller: _brandController,
-                  decoration: const InputDecoration(
-                    labelText: 'Brand/Edition',
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Color(0xFF808569)), // Your custom color
-                    ),
-                    labelStyle: TextStyle(color: Colors.grey), // Normal label color
-                    floatingLabelStyle: TextStyle(color: Color(0xFF808569)), // Focused label color
-                  
-                  
-                  ),
-                  maxLines: 3,
-                ),
-                // Add more fields as needed
-                const SizedBox(height: 20),
-
-                ElevatedButton(
-                  onPressed: _updateProduct,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                      const Color(0xFF808569),
-                  ),
-                  child: const Text('Update'),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
     );
   }
 

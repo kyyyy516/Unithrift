@@ -4,13 +4,9 @@ import 'package:image_picker/image_picker.dart';
 //import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:file_picker/file_picker.dart';
 //import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:video_player/video_player.dart';
 import '../services/cloudinary_service.dart';
-import '../services/db_service.dart';
-
 
 class TestPage extends StatefulWidget {
   //const TestPage(this.noAppBar, {super.key});
@@ -62,26 +58,25 @@ class _TestPageState extends State<TestPage> {
 
   // Enhanced product validation method
   bool _validateProductDetails() {
-
     if (_mediaFiles.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select at least one image/video')),
-        );
-        return false;
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select at least one image/video')),
+      );
+      return false;
+    }
 
     if (_selectedCategory == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select a category')),
-        );
-        return false;
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a category')),
+      );
+      return false;
+    }
 
     if (_selectedCondition == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select a condition')),
-        );
-        return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a condition')),
+      );
+      return false;
     }
 
     // Name length validation
@@ -111,7 +106,6 @@ class _TestPageState extends State<TestPage> {
       );
       return false;
     }
-
 
     // Price validation with more specific conditions
     final price = double.tryParse(_priceController.text.trim());
@@ -144,7 +138,9 @@ class _TestPageState extends State<TestPage> {
 
   // New method to show media preview
   void _showMediaPreview(File mediaFile) async {
-    if (mediaFile.path.endsWith('.jpg') || mediaFile.path.endsWith('.png') || mediaFile.path.endsWith('.jpeg')) {
+    if (mediaFile.path.endsWith('.jpg') ||
+        mediaFile.path.endsWith('.png') ||
+        mediaFile.path.endsWith('.jpeg')) {
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -153,137 +149,133 @@ class _TestPageState extends State<TestPage> {
             insetPadding: EdgeInsets.zero,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
             child: MediaQuery(
-             data: MediaQuery.of(context).copyWith(
-              padding: EdgeInsets.zero,
-              viewInsets: EdgeInsets.zero,
-            ),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Center(
-                    child: InteractiveViewer(
-                    child: Image.file(
-                        mediaFile,
-                        fit: BoxFit.contain,
-                        width: MediaQuery.of(context).size.width,
-                        height: MediaQuery.of(context).size.height,
+              data: MediaQuery.of(context).copyWith(
+                padding: EdgeInsets.zero,
+                viewInsets: EdgeInsets.zero,
+              ),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Center(
+                      child: InteractiveViewer(
+                        child: Image.file(
+                          mediaFile,
+                          fit: BoxFit.contain,
+                          width: MediaQuery.of(context).size.width,
+                          height: MediaQuery.of(context).size.height,
+                        ),
+                      ),
                     ),
-                   ),
                   ),
-                ),
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: IconButton(
-                    icon: const Icon(Icons.close, color: Colors.red, size: 30),
-                    onPressed: () => Navigator.of(context).pop(),
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: IconButton(
+                      icon:
+                          const Icon(Icons.close, color: Colors.red, size: 30),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
             ),
           );
         },
       );
     } else {
-        // Video preview
-        final videoController = VideoPlayerController.file(mediaFile);
-        await videoController.initialize();
+      // Video preview
+      final videoController = VideoPlayerController.file(mediaFile);
+      await videoController.initialize();
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return PopScope(
-          canPop: true,
-
-        child: Dialog(
-            backgroundColor: Colors.black,
-            insetPadding: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-            child: MediaQuery(
-             data: MediaQuery.of(context).copyWith(
-              padding: EdgeInsets.zero,
-              viewInsets: EdgeInsets.zero,
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return PopScope(
+            canPop: true,
+            child: Dialog(
+              backgroundColor: Colors.black,
+              insetPadding: EdgeInsets.zero,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+              child: MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  padding: EdgeInsets.zero,
+                  viewInsets: EdgeInsets.zero,
+                ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        // Pause the video when tapped
+                        if (videoController.value.isPlaying) {
+                          videoController.pause();
+                        } else {
+                          // Play the video when tapped
+                          videoController.play();
+                        }
+                      },
+                      child: Center(
+                        child: InteractiveViewer(
+                          child: AspectRatio(
+                            aspectRatio: videoController.value.aspectRatio,
+                            child: VideoPlayer(videoController),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: IconButton(
+                        icon: const Icon(Icons.close,
+                            color: Colors.red, size: 30),
+                        onPressed: () {
+                          // Dispose the video controller and close the dialog
+                          videoController.dispose();
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 10,
+                      right: 10,
+                      child: IconButton(
+                        icon: Icon(
+                          videoController.value.isPlaying
+                              ? Icons.pause
+                              : Icons.play_arrow,
+                          color: Colors.red,
+                          size: 30,
+                        ),
+                        onPressed: () {
+                          if (videoController.value.isPlaying) {
+                            videoController.pause();
+                          } else {
+                            videoController.play();
+                          }
+                          setState(() {});
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              GestureDetector(
-                onTap: () {
-                    // Pause the video when tapped
-                    if (videoController.value.isPlaying) {
-                      videoController.pause();
-                    }
-                    else { // Play the video when tapped
-                      videoController.play();
-                    }
-                  },
-                child: Center(
-                  child: InteractiveViewer(
-                  child: AspectRatio(
-                    aspectRatio: videoController.value.aspectRatio,
-                    child: VideoPlayer(videoController),
-                    
-                  ),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 10,
-                right: 10,
-                child: IconButton(
-                  icon: const Icon(Icons.close, color: Colors.red, size: 30),
-                  onPressed: () {
-                    // Dispose the video controller and close the dialog
-                      videoController.dispose();
-                      Navigator.of(context).pop();
-                  },
-                ),
-              ),
-              Positioned(
-                bottom: 10,
-                right: 10,
-                child: IconButton(
-                  icon:  Icon(
-                      videoController.value.isPlaying
-                        ? Icons.pause
-                        : Icons.play_arrow,
-                      color: Colors.red,
-                      size: 30,
-                  ),
-                  onPressed: () {
-                    if (videoController.value.isPlaying) {
-                      videoController.pause();
-                    } else {
-                      videoController.play();
-                    }
-                    setState(() {});
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-        ),
-        );
-        
-      },
-    );
+          );
+        },
+      );
+    }
   }
-}
-  
 
   Future<void> _uploadProduct() async {
     try {
-      
       if (!_validateProductDetails()) {
         return;
       }
 
       if (!_formKey.currentState!.validate()) return;
-
 
       setState(() {
         _isUploading = true;
@@ -301,7 +293,6 @@ class _TestPageState extends State<TestPage> {
       _mediaUrls = await Future.wait(
           _mediaFiles.map((mediaFile) => uploadToCloudinary(mediaFile)));
 
-
       // Prepare product data with null safety
       final productData = {
         'name': _nameController.text.trim(),
@@ -316,7 +307,6 @@ class _TestPageState extends State<TestPage> {
         'userEmail': currentUser.email ?? 'no-email',
         'createdAt': FieldValue.serverTimestamp(),
         'timestamp': DateTime.now().millisecondsSinceEpoch, //yyyyyyyyyyyyyy
-
       };
 
       // Add image URLs
@@ -377,27 +367,27 @@ class _TestPageState extends State<TestPage> {
     final picker = ImagePicker();
     final pickedFiles = await picker.pickMultipleMedia();
 
-    
-      // Limit to MAX_IMAGES (3)
-      final limitedFiles = pickedFiles.take(maxMedia).toList();
+    // Limit to MAX_IMAGES (3)
+    final limitedFiles = pickedFiles.take(maxMedia).toList();
 
-      setState(() {
-        _mediaFiles = limitedFiles.map((file)  {
-          if (file.path.endsWith('.jpg') || file.path.endsWith('.png') || file.path.endsWith('.jpeg')) {
-            return File(file.path);
-          } else {
-            return File(file.path);
-          }
-        }).toList();
-      });
+    setState(() {
+      _mediaFiles = limitedFiles.map((file) {
+        if (file.path.endsWith('.jpg') ||
+            file.path.endsWith('.png') ||
+            file.path.endsWith('.jpeg')) {
+          return File(file.path);
+        } else {
+          return File(file.path);
+        }
+      }).toList();
+    });
 
-      // Show a message if more than MAX_IMAGES were selected
-      if (pickedFiles.length > maxMedia) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Only $maxMedia media files can be uploaded')),
-        );
-      }
-    
+    // Show a message if more than MAX_IMAGES were selected
+    if (pickedFiles.length > maxMedia) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Only $maxMedia media files can be uploaded')),
+      );
+    }
   }
 
   void _removeMedia(int index) {
@@ -412,18 +402,17 @@ class _TestPageState extends State<TestPage> {
     // ? Scaffold(
     //   body: SizedBox.shrink(), // Empty space, no UI elements
     // )
-    // : 
+    // :
     return Scaffold(
       appBar: AppBar(
-        title: 
-          Text(
-                  "What's your item?",
-                  style: TextStyle(
-                  //fontWeight: FontWeight.bold,
-                  //fontSize: 28.0,
-                  ),
-                ),
-                //centerTitle: true,
+        title: Text(
+          "What's your item?",
+          style: TextStyle(
+              //fontWeight: FontWeight.bold,
+              //fontSize: 28.0,
+              ),
+        ),
+        //centerTitle: true,
       ),
       body: _isUploading
           ? const Center(child: CircularProgressIndicator())
@@ -437,7 +426,7 @@ class _TestPageState extends State<TestPage> {
                     // const SizedBox(height: 1),
                     // const Padding(
                     //   padding: EdgeInsets.symmetric(vertical: 5.0),
-                      
+
                     // ),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
@@ -454,8 +443,9 @@ class _TestPageState extends State<TestPage> {
                       icon: const Icon(Icons.upload_file),
                       label: Text(
                           'Select Medias (${_mediaFiles.length}/$maxMedia)'),
-                      onPressed:
-                          _mediaFiles.length < maxMedia ? _pickMediaFiles : null,
+                      onPressed: _mediaFiles.length < maxMedia
+                          ? _pickMediaFiles
+                          : null,
                     ),
                     if (_mediaFiles.isNotEmpty)
                       Padding(
@@ -471,22 +461,25 @@ class _TestPageState extends State<TestPage> {
                                   GestureDetector(
                                     onTap: () => _showMediaPreview(mediaFile),
                                     child: Padding(
-                                      padding: 
-                                        const EdgeInsets.only(right: 8.0),
-                                      child: mediaFile.path.endsWith('.jpg') || mediaFile.path.endsWith('.png') || mediaFile.path.endsWith('.jpeg')
-                                        ? Image.file(
-                                          mediaFile,
-                                          width: 120,
-                                          height: 120,
-                                          fit: BoxFit.cover,
-                                          )
-                                        : const SizedBox(
-                                            width: 120,
-                                            height: 120,
-                                            child: Center(
-                                              child: Icon(Icons.videocam, size: 40),
+                                      padding:
+                                          const EdgeInsets.only(right: 8.0),
+                                      child: mediaFile.path.endsWith('.jpg') ||
+                                              mediaFile.path.endsWith('.png') ||
+                                              mediaFile.path.endsWith('.jpeg')
+                                          ? Image.file(
+                                              mediaFile,
+                                              width: 120,
+                                              height: 120,
+                                              fit: BoxFit.cover,
+                                            )
+                                          : const SizedBox(
+                                              width: 120,
+                                              height: 120,
+                                              child: Center(
+                                                child: Icon(Icons.videocam,
+                                                    size: 40),
+                                              ),
                                             ),
-                                      ),
                                     ),
                                   ),
                                   Positioned(

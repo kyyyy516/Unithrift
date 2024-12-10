@@ -12,7 +12,7 @@ void main() {
 }
 
 class VerifyUTMEmail extends StatefulWidget {
-  const VerifyUTMEmail({Key? key}) : super(key: key);
+  const VerifyUTMEmail({super.key});
 
   @override
   _VerifyUTMEmailState createState() {
