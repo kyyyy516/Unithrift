@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:unithrift/cart/cart.dart';
 import 'package:unithrift/homepage.dart';
 import 'package:unithrift/notification_page.dart';
-import 'package:unithrift/sell/account_test.dart';
+import 'package:unithrift/account/acc_info.dart';
 import 'package:unithrift/sell/product_test.dart';
 //import 'package:unithrift/sell/try_upload.dart';
 //import 'package:unithrift/sell/upload_main.dart';
@@ -20,7 +20,7 @@ const List<Widget> pages = <Widget>[
   TestPage(),
   Cart(true),
   //Text('Account Page'),
-  AccountPage(),
+  AccountInfo(),
   
 ];
 
@@ -57,7 +57,7 @@ void commonNavigate(BuildContext context, int index) {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => const AccountPage(), // Replace with your account page;
+            builder: (context) => const AccountInfo(), // Replace with your account page;
           ),
         );
         break;
