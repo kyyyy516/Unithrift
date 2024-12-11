@@ -1,27 +1,24 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-//import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:file_picker/file_picker.dart';
-//import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:video_player/video_player.dart';
 import '../services/cloudinary_service.dart';
 import '../services/db_service.dart';
+import '../sell/publish_success.dart';
 
 
-class TestPage extends StatefulWidget {
-  //const TestPage(this.noAppBar, {super.key});
-  //final bool noAppBar;
-  const TestPage({super.key});
+class UploadRentalPage extends StatefulWidget {
+  const UploadRentalPage({super.key});
 
   @override
-  State<TestPage> createState() => _TestPageState();
+  State<UploadRentalPage> createState() => _UploadRentalPageState();
 }
 
-class _TestPageState extends State<TestPage> {
+class _UploadRentalPageState extends State<UploadRentalPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
@@ -30,12 +27,25 @@ class _TestPageState extends State<TestPage> {
 
   // Support up to 3 images
   List<File> _mediaFiles = [];
-  //List<FilePickerResult?> _mediaFiles = [];
   List<String> _mediaUrls = [];
   bool _isUploading = false;
   static const int maxMedia = 3;
 
-  // Product Condition Options
+  // Categories
+  final List<String> _categories = [  // rental
+    'Books and Study Materials',
+    'Electronics and Gadgets',
+    'Furniture and Household',
+    'Clothing and Accessories',
+    'Sports and Fitness Equipment',
+    'Transportation',
+    'Other Essentials'
+  ];
+  // Selected category
+  String? _selectedCategory;
+
+
+  // Condition
   final List<String> _conditionOptions = [
     'New',
     'Like New',
@@ -44,21 +54,6 @@ class _TestPageState extends State<TestPage> {
     'Repair'
   ];
   String? _selectedCondition;
-
-  // Categories list
-  final List<String> _categories = [
-    'Books',
-    'Clothes',
-    'Electronics',
-    'Furniture',
-    'Mobile Phones & Gadgets',
-    'Beauty & Personal Care',
-    'Tickets',
-    'Stationary',
-    'Other'
-  ];
-  // Selected category
-  String? _selectedCategory;
 
   // Enhanced product validation method
   bool _validateProductDetails() {
@@ -89,7 +84,7 @@ class _TestPageState extends State<TestPage> {
     if (name.length < 3) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Product name must be at least 3 characters long.')),
+            content: Text('Name must be at least 3 characters long.')),
       );
       return false;
     }
@@ -97,7 +92,7 @@ class _TestPageState extends State<TestPage> {
     if (name.length > 100) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Product name must be less than 100 characters.')),
+            content: Text('Name must be less than 100 characters.')),
       );
       return false;
     }
@@ -107,7 +102,7 @@ class _TestPageState extends State<TestPage> {
     if (details.isNotEmpty && details.length > 500) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Product details must be less than 500 characters.')),
+            content: Text('Descriptions must be less than 500 characters.')),
       );
       return false;
     }
@@ -302,15 +297,15 @@ class _TestPageState extends State<TestPage> {
           _mediaFiles.map((mediaFile) => uploadToCloudinary(mediaFile)));
 
 
-      // Prepare product data with null safety
+      // Prepare product data 
       final productData = {
         'name': _nameController.text.trim(),
-        'price': double.parse(_priceController.text.trim()),
+        'price': double.parse(double.parse(_priceController.text.trim()).toStringAsFixed(2)),
         'details': _detailsController.text.trim(),
         'brand': _brandController.text.trim(),
-        'category': _selectedCategory, // 'category': _selectedCategory!,
+        'category': _selectedCategory, 
         'condition': _selectedCondition,
-        'type': 'feature',
+        'type': 'rental',
         'userId': currentUser.uid,
         'username': currentUser.displayName ?? 'Anonymous',
         'userEmail': currentUser.email ?? 'no-email',
@@ -319,7 +314,7 @@ class _TestPageState extends State<TestPage> {
 
       };
 
-      // Add image URLs
+      // Add media URLs
       for (var i = 0; i < _mediaUrls.length; i++) {
         productData['mediaUrl${i + 1}'] = _mediaUrls[i];
       }
@@ -331,16 +326,29 @@ class _TestPageState extends State<TestPage> {
           .collection('products')
           .add(productData);
 
+
       // Update the document with its own ID
       await productDoc.update({'productId': productDoc.id});
 
       if (mounted) {
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text('${_nameController.text} uploaded successfully!')),
         );
 
-        //_formKey.currentState!.reset();
+        // Navigate to the "Publish Successful!" page with product ID
+        // Navigator.pushReplacement(
+        //   context,
+        //   MaterialPageRoute(
+        //     builder: (_) => PublishSuccessfulPage(
+        //       productID: productDoc.id,
+        //       userID: currentUser.uid,
+        //     )
+        //   ),
+        // );
+
+
         // With this safer version
         if (_formKey.currentState != null) {
           _formKey.currentState!.reset();
@@ -358,10 +366,8 @@ class _TestPageState extends State<TestPage> {
           _selectedCondition = null;
         });
       }
-    } catch (e, stackTrace) {
+    } catch (e) {
       if (mounted) {
-        print('Error details: $e');
-        print('Stack trace: $stackTrace');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Upload failed: $e')),
         );
@@ -372,7 +378,7 @@ class _TestPageState extends State<TestPage> {
     }
   }
 
-  // Replace the _pickImages method with this:
+  // Pick Media Files
   void _pickMediaFiles() async {
     final picker = ImagePicker();
     final pickedFiles = await picker.pickMultipleMedia();
@@ -408,22 +414,14 @@ class _TestPageState extends State<TestPage> {
 
   @override
   Widget build(BuildContext context) {
-    // return (widget.noAppBar)
-    // ? Scaffold(
-    //   body: SizedBox.shrink(), // Empty space, no UI elements
-    // )
-    // : 
     return Scaffold(
       appBar: AppBar(
         title: 
           Text(
-                  "What's your item?",
+                  "What's your rental?",
                   style: TextStyle(
-                  //fontWeight: FontWeight.bold,
-                  //fontSize: 28.0,
                   ),
                 ),
-                //centerTitle: true,
       ),
       body: _isUploading
           ? const Center(child: CircularProgressIndicator())
@@ -434,11 +432,6 @@ class _TestPageState extends State<TestPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // const SizedBox(height: 1),
-                    // const Padding(
-                    //   padding: EdgeInsets.symmetric(vertical: 5.0),
-                      
-                    // ),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         foregroundColor: Colors.white, // Text color
@@ -504,6 +497,7 @@ class _TestPageState extends State<TestPage> {
                           ),
                         ),
                       ),
+
                     const SizedBox(height: 30),
                     // Category Dropdown
                     DropdownButtonFormField<String>(
@@ -531,6 +525,7 @@ class _TestPageState extends State<TestPage> {
                         return null;
                       },
                     ),
+
                     const SizedBox(height: 30),
                     DropdownButtonFormField<String>(
                       decoration: const InputDecoration(
@@ -551,6 +546,7 @@ class _TestPageState extends State<TestPage> {
                         });
                       },
                     ),
+
                     const SizedBox(height: 30),
                     TextFormField(
                       controller: _nameController,
@@ -565,6 +561,7 @@ class _TestPageState extends State<TestPage> {
                         return null;
                       },
                     ),
+
                     const SizedBox(height: 20),
                     TextFormField(
                       controller: _priceController,
@@ -583,15 +580,17 @@ class _TestPageState extends State<TestPage> {
                         return null;
                       },
                     ),
+
                     const SizedBox(height: 20),
                     TextFormField(
                       controller: _detailsController,
                       decoration: const InputDecoration(
-                        labelText: 'Details',
+                        labelText: 'Description',
                         border: OutlineInputBorder(),
                       ),
                       maxLines: 3,
                     ),
+
                     const SizedBox(height: 20),
                     TextFormField(
                       controller: _brandController,
@@ -600,6 +599,7 @@ class _TestPageState extends State<TestPage> {
                         border: OutlineInputBorder(),
                       ),
                     ),
+
                     const SizedBox(height: 20),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
@@ -614,7 +614,7 @@ class _TestPageState extends State<TestPage> {
                         elevation: 3, // Shadow elevation
                       ),
                       onPressed: _uploadProduct,
-                      child: const Text('Upload Product'),
+                      child: const Text('Upload Now'),
                     ),
                   ],
                 ),

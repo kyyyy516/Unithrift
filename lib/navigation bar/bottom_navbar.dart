@@ -5,19 +5,18 @@ import 'package:unithrift/cart/cart.dart';
 import 'package:unithrift/homepage.dart';
 import 'package:unithrift/notification_page.dart';
 import 'package:unithrift/sell/account_test.dart';
-import 'package:unithrift/sell/product_test.dart';
+import 'package:unithrift/sell/feature_upload.dart';
 //import 'package:unithrift/sell/try_upload.dart';
 //import 'package:unithrift/sell/upload_main.dart';
 import '../explore/explore.dart';
 import '../sell/upload_main.dart';
+import '../sell/rental_upload.dart';
 
 
 const List<Widget> pages = <Widget>[
   Explore(),
   NotificationPage(),
-  //TryUploadPage(),
-  //MainUploadPage(),
-  TestPage(),
+  MainUploadPage(),
   Cart(true),
   //Text('Account Page'),
   AccountPage(),
@@ -42,7 +41,7 @@ void commonNavigate(BuildContext context, int index) {
     case 2: // Sell
     Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const TestPage()),
+        MaterialPageRoute(builder: (context) => const MainUploadPage()),
       );
       break;
     case 3:

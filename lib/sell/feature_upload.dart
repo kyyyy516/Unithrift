@@ -1,21 +1,24 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:video_player/video_player.dart';
+import '../services/cloudinary_service.dart';
+import '../services/db_service.dart';
+import '../sell/publish_success.dart';
 
-class ProductUploadPage extends StatefulWidget {
-  const ProductUploadPage({super.key});
+
+class UploadFeaturePage extends StatefulWidget {
+  const UploadFeaturePage({super.key});
 
   @override
-  State<ProductUploadPage> createState() => _ProductUploadPageState();
+  State<UploadFeaturePage> createState() => _UploadFeaturePageState();
 }
 
-class _ProductUploadPageState extends State<ProductUploadPage> {
+class _UploadFeaturePageState extends State<UploadFeaturePage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
@@ -23,13 +26,31 @@ class _ProductUploadPageState extends State<ProductUploadPage> {
   final TextEditingController _brandController = TextEditingController();
 
   // Support up to 3 images
-  List<File> _imageFiles = [];
-  List<String> _imageUrls = [];
+  List<File> _mediaFiles = [];
+  //List<FilePickerResult?> _mediaFiles = [];
+  List<String> _mediaUrls = [];
   bool _isUploading = false;
-  static const int MAX_IMAGES = 3;
+  static const int maxMedia = 3;
 
-  // Product Condition Options
-  final List<String> _conditionOptions = [
+  // Categories list
+  final List<String> _categories = [  // feature
+    'Books',
+    'Clothes',
+    'Furniture',
+    'Electronics',
+    'Others'
+    // 'Mobile Phones & Gadgets',
+    // 'Beauty & Personal Care',
+    // 'Tickets',
+    // 'Stationary',
+    // 'Other'
+  ];
+  // Selected category
+  String? _selectedCategory;
+
+
+  // Condition Options
+  final List<String> _conditions = [
     'New',
     'Like New',
     'Gently Used',
@@ -38,47 +59,28 @@ class _ProductUploadPageState extends State<ProductUploadPage> {
   ];
   String? _selectedCondition;
 
-  // Categories list
-  final List<String> _categories = [
-    'Books',
-    'Clothes',
-    'Electronics',
-    'Furniture',
-    'Mobile Phones & Gadgets',
-    'Beauty & Personal Care',
-    'Tickets',
-    'Stationary',
-    'Other'
-  ];
-  // Selected category
-  String? _selectedCategory;
-
   // Enhanced product validation method
   bool _validateProductDetails() {
-    // Price validation with more specific conditions
-    final price = double.tryParse(_priceController.text.trim());
-    if (price == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Invalid price. Please enter a valid number.')),
-      );
-      return false;
-    }
 
-    // Price range validation
-    if (price <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Price must be greater than 0.')),
-      );
-      return false;
-    }
+    if (_mediaFiles.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select at least one image/video')),
+        );
+        return false;
+      }
 
-    if (price > 1000000) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Price is too high. Maximum price is 1,000,000.')),
-      );
-      return false;
+    if (_selectedCategory == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select a category')),
+        );
+        return false;
+      }
+
+    if (_selectedCondition == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select a condition')),
+        );
+        return false;
     }
 
     // Name length validation
@@ -109,10 +111,29 @@ class _ProductUploadPageState extends State<ProductUploadPage> {
       return false;
     }
 
-    // Condition validation
-    if (_selectedCondition == null) {
+
+    // Price validation with more specific conditions
+    final price = double.tryParse(_priceController.text.trim());
+    if (price == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a condition.')),
+        const SnackBar(
+            content: Text('Invalid price. Please enter a valid number.')),
+      );
+      return false;
+    }
+
+    // Price range validation
+    if (price <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Price must be greater than 0.')),
+      );
+      return false;
+    }
+
+    if (price > 1000000) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Price is too high. Maximum price is 1,000,000.')),
       );
       return false;
     }
@@ -120,22 +141,91 @@ class _ProductUploadPageState extends State<ProductUploadPage> {
     return true;
   }
 
-  // New method to show image preview
-  void _showImagePreview(File imageFile) {
+  // New method to show media preview
+  void _showMediaPreview(File mediaFile) async {
+    if (mediaFile.path.endsWith('.jpg') || mediaFile.path.endsWith('.png') || mediaFile.path.endsWith('.jpeg')) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return Dialog(
+            backgroundColor: Colors.black,
+            insetPadding: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+            child: MediaQuery(
+             data: MediaQuery.of(context).copyWith(
+              padding: EdgeInsets.zero,
+              viewInsets: EdgeInsets.zero,
+            ),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Center(
+                    child: InteractiveViewer(
+                    child: Image.file(
+                        mediaFile,
+                        fit: BoxFit.contain,
+                        width: MediaQuery.of(context).size.width,
+                        height: MediaQuery.of(context).size.height,
+                    ),
+                   ),
+                  ),
+                ),
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: IconButton(
+                    icon: const Icon(Icons.close, color: Colors.red, size: 30),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ),
+              ],
+            ),
+            ),
+          );
+        },
+      );
+    } else {
+        // Video preview
+        final videoController = VideoPlayerController.file(mediaFile);
+        await videoController.initialize();
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return Dialog(
+        return PopScope(
+          canPop: true,
+
+        child: Dialog(
+            backgroundColor: Colors.black,
+            insetPadding: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+            child: MediaQuery(
+             data: MediaQuery.of(context).copyWith(
+              padding: EdgeInsets.zero,
+              viewInsets: EdgeInsets.zero,
+            ),
           child: Stack(
+            fit: StackFit.expand,
             children: [
               GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
+                onTap: () {
+                    // Pause the video when tapped
+                    if (videoController.value.isPlaying) {
+                      videoController.pause();
+                    }
+                    else { // Play the video when tapped
+                      videoController.play();
+                    }
+                  },
                 child: Center(
-                  child: Image.file(
-                    imageFile,
-                    fit: BoxFit.contain,
-                    width: double.infinity,
-                    height: double.infinity,
+                  child: InteractiveViewer(
+                  child: AspectRatio(
+                    aspectRatio: videoController.value.aspectRatio,
+                    child: VideoPlayer(videoController),
+                    
+                  ),
                   ),
                 ),
               ),
@@ -143,65 +233,56 @@ class _ProductUploadPageState extends State<ProductUploadPage> {
                 top: 10,
                 right: 10,
                 child: IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white, size: 30),
-                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close, color: Colors.red, size: 30),
+                  onPressed: () {
+                    // Dispose the video controller and close the dialog
+                      videoController.dispose();
+                      Navigator.of(context).pop();
+                  },
+                ),
+              ),
+              Positioned(
+                bottom: 10,
+                right: 10,
+                child: IconButton(
+                  icon:  Icon(
+                      videoController.value.isPlaying
+                        ? Icons.pause
+                        : Icons.play_arrow,
+                      color: Colors.red,
+                      size: 30,
+                  ),
+                  onPressed: () {
+                    if (videoController.value.isPlaying) {
+                      videoController.pause();
+                    } else {
+                      videoController.play();
+                    }
+                    setState(() {});
+                  },
                 ),
               ),
             ],
           ),
+        ),
+        ),
         );
+        
       },
     );
   }
-
-  Future<String> uploadToImgbb(File imageFile) async {
-    final apiKey = '0682e041094cb93036299a0fbe3223dd';
-    final url = Uri.parse('https://api.imgbb.com/1/upload?key=$apiKey');
-
-    final request = http.MultipartRequest('POST', url)
-      ..files.add(await http.MultipartFile.fromPath('image', imageFile.path));
-
-    final response = await request.send();
-    final responseData = await http.Response.fromStream(response);
-
-    if (response.statusCode == 200) {
-      final jsonData = jsonDecode(responseData.body);
-      return jsonData['data']['url'];
-    } else {
-      throw Exception(
-          'Failed to upload image to imgbb: ${responseData.statusCode} - ${responseData.body}');
-    }
-  }
+}
+  
 
   Future<void> _uploadProduct() async {
     try {
-      // Validate all required fields first
-      if (_selectedCategory == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select a category')),
-        );
-        return;
-      }
-
-      if (_selectedCondition == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select a condition')),
-        );
-        return;
-      }
-
+      
       if (!_validateProductDetails()) {
         return;
       }
 
       if (!_formKey.currentState!.validate()) return;
 
-      if (_imageFiles.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select at least one image')),
-        );
-        return;
-      }
 
       setState(() {
         _isUploading = true;
@@ -215,18 +296,21 @@ class _ProductUploadPageState extends State<ProductUploadPage> {
         return;
       }
 
-      // Upload images to imgbb
-      _imageUrls = await Future.wait(
-          _imageFiles.map((imageFile) => uploadToImgbb(imageFile)));
+      // Upload medias to Cloudinary
+      _mediaUrls = await Future.wait(
+          _mediaFiles.map((mediaFile) => uploadToCloudinary(mediaFile)));
+
 
       // Prepare product data with null safety
       final productData = {
-        'name': _nameController.text.trim(),
-        'price': double.parse(_priceController.text.trim()),
+        'name': _nameController.text.trim(),  // removes any leading and trailing whitespace from a string.
+        //'price': double.parse(_priceController.text.trim()),
+        // toStringAsFixed() returns a String, if you need it as a double, wrap it with double.parse
+        'price': double.parse(double.parse(_priceController.text.trim()).toStringAsFixed(2)),
         'details': _detailsController.text.trim(),
         'brand': _brandController.text.trim(),
-        'category': _selectedCategory!,
-        'condition': _selectedCondition!,
+        'category': _selectedCategory, // 'category': _selectedCategory!,
+        'condition': _selectedCondition,
         'type': 'feature',
         'userId': currentUser.uid,
         'username': currentUser.displayName ?? 'Anonymous',
@@ -234,12 +318,11 @@ class _ProductUploadPageState extends State<ProductUploadPage> {
         'createdAt': FieldValue.serverTimestamp(),
         'timestamp': DateTime.now().millisecondsSinceEpoch, //yyyyyyyyyyyyyy
 
-        //'productId': '',
       };
 
       // Add image URLs
-      for (var i = 0; i < _imageUrls.length; i++) {
-        productData['imageUrl${i + 1}'] = _imageUrls[i];
+      for (var i = 0; i < _mediaUrls.length; i++) {
+        productData['mediaUrl${i + 1}'] = _mediaUrls[i];
       }
 
       // Upload to Firestore and get the document reference
@@ -248,6 +331,11 @@ class _ProductUploadPageState extends State<ProductUploadPage> {
           .doc(currentUser.uid)
           .collection('products')
           .add(productData);
+
+          // Add debug prints here
+          // print('Navigating to success page with:');
+          // print('Product ID: ${productDoc.id}');
+          // print('User ID: ${currentUser.uid}');
 
       // Update the document with its own ID
       await productDoc.update({'productId': productDoc.id});
@@ -258,22 +346,42 @@ class _ProductUploadPageState extends State<ProductUploadPage> {
               content: Text('${_nameController.text} uploaded successfully!')),
         );
 
-        _formKey.currentState!.reset();
+        // Navigate to the "Publish Successful!" page with product ID
+        // Navigator.pushReplacement(
+        //   context,
+        //   MaterialPageRoute(
+        //     builder: (_) => PublishSuccessfulPage(
+        //       productID: productDoc.id,
+        //       userID: currentUser.uid,
+              
+        //     )
+            
+        //   ),
+        // );
+
+
+        // With this safer version
+        if (_formKey.currentState != null) {
+          _formKey.currentState!.reset();
+        }
         _nameController.clear();
         _priceController.clear();
         _detailsController.clear();
         _brandController.clear();
 
         setState(() {
-          _imageFiles.clear();
-          _imageUrls.clear();
+          _mediaFiles.clear();
+          _mediaUrls.clear();
           _isUploading = false;
           _selectedCategory = null;
           _selectedCondition = null;
         });
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (mounted) {
+        print('Error details: $e');
+        print('Stack trace: $stackTrace');
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Upload failed: $e')),
         );
@@ -285,37 +393,58 @@ class _ProductUploadPageState extends State<ProductUploadPage> {
   }
 
   // Replace the _pickImages method with this:
-  void _pickImages() async {
+  void _pickMediaFiles() async {
     final picker = ImagePicker();
-    final pickedFiles = await picker.pickMultiImage();
+    final pickedFiles = await picker.pickMultipleMedia();
 
-    if (pickedFiles != null) {
+    
       // Limit to MAX_IMAGES (3)
-      final limitedFiles = pickedFiles.take(MAX_IMAGES).toList();
+      final limitedFiles = pickedFiles.take(maxMedia).toList();
 
       setState(() {
-        _imageFiles = limitedFiles.map((file) => File(file.path)).toList();
+        _mediaFiles = limitedFiles.map((file)  {
+          if (file.path.endsWith('.jpg') || file.path.endsWith('.png') || file.path.endsWith('.jpeg')) {
+            return File(file.path);
+          } else {
+            return File(file.path);
+          }
+        }).toList();
       });
 
       // Show a message if more than MAX_IMAGES were selected
-      if (pickedFiles.length > MAX_IMAGES) {
+      if (pickedFiles.length > maxMedia) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Only $MAX_IMAGES images can be uploaded')),
+          SnackBar(content: Text('Only $maxMedia media files can be uploaded')),
         );
       }
-    }
+    
   }
 
-  void _removeImage(int index) {
+  void _removeMedia(int index) {
     setState(() {
-      _imageFiles.removeAt(index);
+      _mediaFiles.removeAt(index);
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    // return (widget.noAppBar)
+    // ? Scaffold(
+    //   body: SizedBox.shrink(), // Empty space, no UI elements
+    // )
+    // : 
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(
+        title: 
+          Text(
+                  "What's your item?",
+                  style: TextStyle(
+                  //fontWeight: FontWeight.bold,
+                  //fontSize: 28.0,
+                  ),
+                ),
+                //centerTitle: true,
+      ),
       body: _isUploading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -325,17 +454,6 @@ class _ProductUploadPageState extends State<ProductUploadPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const SizedBox(height: 1),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 5.0),
-                      child: Text(
-                        "What's your item?",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 28.0,
-                        ),
-                      ),
-                    ),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         foregroundColor: Colors.white, // Text color
@@ -350,31 +468,39 @@ class _ProductUploadPageState extends State<ProductUploadPage> {
                       ),
                       icon: const Icon(Icons.upload_file),
                       label: Text(
-                          'Select Images (${_imageFiles.length}/$MAX_IMAGES)'),
+                          'Select Medias (${_mediaFiles.length}/$maxMedia)'),
                       onPressed:
-                          _imageFiles.length < MAX_IMAGES ? _pickImages : null,
+                          _mediaFiles.length < maxMedia ? _pickMediaFiles : null,
                     ),
-                    if (_imageFiles.isNotEmpty)
+                    if (_mediaFiles.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 10),
                         child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: Row(
-                            children: _imageFiles.asMap().entries.map((entry) {
+                            children: _mediaFiles.asMap().entries.map((entry) {
                               final index = entry.key;
-                              final imageFile = entry.value;
+                              final mediaFile = entry.value;
                               return Stack(
                                 children: [
                                   GestureDetector(
-                                    onTap: () => _showImagePreview(imageFile),
+                                    onTap: () => _showMediaPreview(mediaFile),
                                     child: Padding(
-                                      padding:
-                                          const EdgeInsets.only(right: 8.0),
-                                      child: Image.file(
-                                        imageFile,
-                                        width: 120,
-                                        height: 120,
-                                        fit: BoxFit.cover,
+                                      padding: 
+                                        const EdgeInsets.only(right: 8.0),
+                                      child: mediaFile.path.endsWith('.jpg') || mediaFile.path.endsWith('.png') || mediaFile.path.endsWith('.jpeg')
+                                        ? Image.file(
+                                          mediaFile,
+                                          width: 120,
+                                          height: 120,
+                                          fit: BoxFit.cover,
+                                          )
+                                        : const SizedBox(
+                                            width: 120,
+                                            height: 120,
+                                            child: Center(
+                                              child: Icon(Icons.videocam, size: 40),
+                                            ),
                                       ),
                                     ),
                                   ),
@@ -384,7 +510,7 @@ class _ProductUploadPageState extends State<ProductUploadPage> {
                                     child: IconButton(
                                       icon: const Icon(Icons.close,
                                           color: Colors.red),
-                                      onPressed: () => _removeImage(index),
+                                      onPressed: () => _removeMedia(index),
                                     ),
                                   ),
                                 ],
@@ -428,7 +554,7 @@ class _ProductUploadPageState extends State<ProductUploadPage> {
                       ),
                       value: _selectedCondition,
                       hint: const Text('Select a Condition'),
-                      items: _conditionOptions.map((String condition) {
+                      items: _conditions.map((String condition) {
                         return DropdownMenuItem<String>(
                           value: condition,
                           child: Text(condition),
@@ -476,7 +602,7 @@ class _ProductUploadPageState extends State<ProductUploadPage> {
                     TextFormField(
                       controller: _detailsController,
                       decoration: const InputDecoration(
-                        labelText: 'Details',
+                        labelText: 'Description',
                         border: OutlineInputBorder(),
                       ),
                       maxLines: 3,
@@ -503,7 +629,7 @@ class _ProductUploadPageState extends State<ProductUploadPage> {
                         elevation: 3, // Shadow elevation
                       ),
                       onPressed: _uploadProduct,
-                      child: const Text('Upload Product'),
+                      child: const Text('Upload Now'),
                     ),
                   ],
                 ),

@@ -2,27 +2,28 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart' hide CarouselController;
-import 'package:unithrift/chatscreen.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'dart:math' show min; // Add this import at the top
 import 'package:unithrift/firestore_service.dart';
-import '../sell/edit_test.dart';
+import '../sell/edit/edit_rental.dart';
+import '../sell/edit/edit_feature.dart';
+import '../sell/edit/edit_service.dart';
 import '../services/cloudinary_service.dart';
 
-class ListingPage extends StatefulWidget {
-  final Map<String, dynamic?> product;  // Make it optional with ?
+class ListingDetailsPage extends StatefulWidget {
+  final Map<String, dynamic> product;  // Make it optional with ?
 
-  const ListingPage({
+  const ListingDetailsPage({
     super.key, 
     required this.product
   });
 
   @override
-  State<ListingPage> createState() => _ListingPageState();
+  State<ListingDetailsPage> createState() => _ListingDetailsPageState();
 }
 
-class _ListingPageState extends State<ListingPage> {
+class _ListingDetailsPageState extends State<ListingDetailsPage> {
   int _currentImageIndex = 0;
   bool _isVideo = false;
   List<Map<String, dynamic>> ratings = [];
@@ -69,6 +70,35 @@ class _ListingPageState extends State<ListingPage> {
     }
   }
 
+  // Get mediaUrl
+  List<String> getMediaUrls(Map<String, dynamic> product) {
+  List<String> urls = [];
+  for (int i = 1; i <= 3; i++) {
+    String? url = product['mediaUrl$i'];
+    print('mediaUrl$i: $url'); // Debug print
+    if (url != null && url.isNotEmpty) {
+      urls.add(url);
+    }
+  }
+  print('Total URLs found: ${urls.length}'); // Debug print
+  return urls;
+}
+
+// extract public ID
+String extractPublicId(String cloudinaryUrl) {
+  print('Extracting public ID from: $cloudinaryUrl'); // Debug print
+  Uri uri = Uri.parse(cloudinaryUrl);
+  List<String> pathSegments = uri.pathSegments;
+  print('Path segments: $pathSegments'); // Debug print
+
+  // Simply get the last segment (filename with extension)
+  String publicId = pathSegments.last;
+  print('Extracted public ID: $publicId');
+  return publicId;
+}
+
+
+
   Future<void> _deleteItem() async {
   try {
     // Show confirmation dialog
@@ -84,7 +114,9 @@ class _ListingPageState extends State<ListingPage> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text('Delete', 
+            //style: TextStyle(color: Colors.red)
+            ),
           ),
         ],
       ),
@@ -93,11 +125,25 @@ class _ListingPageState extends State<ListingPage> {
     if (!confirm) return;
 
     // First delete the media from Cloudinary
-    String publicId = widget.product['mediaUrl']; // store the public_id
-    bool cloudinaryDeleteSuccess = await deleteFromCloudinary(publicId);
-    
-    if (!cloudinaryDeleteSuccess) {
-      throw Exception('Failed to delete the media.');
+    // Get all media URLs
+
+    print('Starting deletion process'); // Debug print
+    List<String> mediaUrls = getMediaUrls(widget.product);
+    print('Found media URLs: $mediaUrls'); // Debug print
+
+    // Delete each media from Cloudinary
+    for (String url in mediaUrls) {
+      String publicId = extractPublicId(url);
+      print('Processing deletion for URL: $url'); // Debug print
+      if (publicId.isNotEmpty) {
+        try {
+          //await deleteFromCloudinary(publicId);
+          bool success = await deleteFromCloudinary(publicId);
+          print('Cloudinary deletion result for $publicId: $success'); // Debug print
+        } catch (e) {
+          print('Failed to delete media: $url - Error: $e');
+        }
+      }
     }
 
     // Then delete product from Firestore
@@ -115,6 +161,7 @@ class _ListingPageState extends State<ListingPage> {
       Navigator.pop(context); // Return to previous screen
     }
   } catch (e) {
+    print('❌ Main error in deletion: $e'); // Debug print
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error deleting item: $e')),
@@ -123,18 +170,58 @@ class _ListingPageState extends State<ListingPage> {
   }
 }
 
-void _editProduct() {
-  // Navigate to edit product page
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => EditProductPage(
-        productID: widget.product['productID'],
-        userID: widget.product['userId'],
+void _editProduct() async{
+  // Get the type from product data
+  String itemType = widget.product['type']; 
+
+  // Create a map of type to corresponding edit pages
+  final Map<String, Widget Function()> editPages = {
+    'rental': () => EditRentalPage(
+          productID: widget.product['productID'],
+          userID: widget.product['userId'],
+        ),
+    'feature': () => EditFeaturePage(
+          productID: widget.product['productID'],
+          userID: widget.product['userId'],
+        ),
+    'service': () => EditServicePage(
+              productID: widget.product['productID'],
+              userID: widget.product['userId'],
+        ),        
+  };
+
+  // Navigate to the appropriate edit page
+  if (editPages.containsKey(itemType)) {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => editPages[itemType]!(),
       ),
-    ),
-  );
+    );
+    // If edit was successful, refresh the data
+    if (result == true) {
+      // Fetch updated product data
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.product['userId'])
+          .collection('products')
+          .doc(widget.product['productID'])
+          .get();
+
+      if (doc.exists) {
+        setState(() {
+          widget.product.addAll(doc.data()!);
+        });
+      }
+    }
+  } else {
+    // Handle unknown type
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Unknown product type: $itemType')),
+    );
+  }
 }
+
 
 // Add this method to toggle availability
 Future<void> _toggleAvailability() async {
@@ -173,6 +260,15 @@ Future<void> _toggleAvailability() async {
         .doc(widget.product['productID'])
         .update({'isAvailable': !currentAvailability});
 
+      // Update local state immediately
+      setState(() {
+        widget.product['isAvailable'] = !currentAvailability;
+      });
+
+      // Notify parent page of the change
+      Navigator.pop(context, true);
+      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -194,13 +290,12 @@ Future<void> _toggleAvailability() async {
 
 
 
-
 Widget _buildActionButtons() {
   final isAvailable = widget.product['isAvailable'] ?? true;
 
   return Container(
     padding: const EdgeInsets.all(8.0),
-    height: 60, // Add fixed height
+    height: 60,
     decoration: BoxDecoration(
       color: Colors.white,
       boxShadow: [
@@ -213,12 +308,10 @@ Widget _buildActionButtons() {
       ],
     ),
     child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-
-        // Show different content based on availability
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
         if (isAvailable) ...[
-          // Edit button
+          // Available item buttons
           IconButton(
             icon: const Icon(Icons.edit),
             color: const Color(0xFF808569),
@@ -226,44 +319,162 @@ Widget _buildActionButtons() {
               _editProduct();
             },
           ),
-          // Visibility toggle
           IconButton(
             icon: const Icon(Icons.visibility),
             color: const Color(0xFF808569),
             onPressed: _toggleAvailability,
           ),
-          // Delete button
           IconButton(
             icon: const Icon(Icons.delete),
             color: const Color(0xFF808569),
             onPressed: _deleteItem,
           ),
         ] else ...[
-          // Message and toggle for unavailable items
-          Expanded(
-            child: GestureDetector(
-              onTap: _toggleAvailability,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.visibility_off,
-                    color: Color(0xFF808569),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Make it available?',
-                    style: TextStyle(
-                      color: Color(0xFF808569),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
+          // Unavailable item buttons
+          IconButton(
+            icon: const Icon(Icons.visibility_off),
+            color: const Color(0xFF808569),
+            onPressed: _toggleAvailability,
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete),
+            color: const Color(0xFF808569),
+            onPressed: _deleteItem,
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
+Widget _buildProductContent() {
+  String type = widget.product['type'] ?? '';
+
+  if (type == 'service') {
+    return _buildServiceContent();
+  } else {
+    return _buildRegularContent(); // For rental and feature types
+  }
+}
+
+Widget _buildServiceContent() {
+  return Padding(
+    padding: const EdgeInsets.all(16.0),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.product['name'] ?? 'No Name',
+          style: const TextStyle(
+            fontSize: 27,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          "Posted ${getTimeAgo(widget.product['timestamp'] ?? widget.product['createdAt'])}",
+          style: const TextStyle(
+            fontSize: 13,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          "RM ${(double.parse(widget.product['price'].toString())).toStringAsFixed(2)}",
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Color.fromARGB(255, 0, 0, 0),
+          ),
+        ),
+        const SizedBox(height: 20),
+        // Service specific fields
+        _buildInfoField("Pricing Details", widget.product['pricingDetails']),
+        _buildInfoField("Availability", widget.product['availability']),
+        _buildInfoField("Description", widget.product['details']),
+        
+        const SizedBox(height: 20),
+        const Divider(
+          height: 20,
+          thickness: 1,
+          color: Colors.black26,
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildInfoField(String label, dynamic value) {
+  String displayValue = value?.toString().trim().isEmpty ?? true ? 'N/A' : value.toString();
+
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 20),
+    child: RichText(
+      text: TextSpan(
+        children: [
+          TextSpan(
+            text: "$label\n",
+            style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFF808569),
+            ),
+          ),
+          TextSpan(
+            text: displayValue,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.black,
             ),
           ),
         ],
-    
+      ),
+    ),
+  );
+}
+
+Widget _buildRegularContent() {
+  return Padding(
+    padding: const EdgeInsets.all(16.0),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Your existing content for rental and feature types
+        Text(
+          widget.product['name'] ?? 'No Name',
+          style: const TextStyle(
+            fontSize: 27,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          "Posted ${getTimeAgo(widget.product['timestamp'] ?? widget.product['createdAt'])}",
+          style: const TextStyle(
+            fontSize: 13,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          "RM ${(double.parse(widget.product['price'].toString())).toStringAsFixed(2)}",
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Color.fromARGB(255, 0, 0, 0),
+          ),
+        ),
+        const SizedBox(height: 20),
+        _buildInfoField("Category", widget.product['category']),
+        _buildInfoField("Condition", widget.product['condition']),
+        _buildInfoField("Brand", widget.product['brand']),
+        _buildInfoField("Description", widget.product['details']),
+        
+        const SizedBox(height: 20),
+        const Divider(
+          height: 20,
+          thickness: 1,
+          color: Colors.black26,
+        ),
       ],
     ),
   );
@@ -371,145 +582,13 @@ Widget _buildActionButtons() {
                     ),
                 ],
 
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.product['name'] ?? 'No Name',
-                        style: const TextStyle(
-                          fontSize: 27,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      // Add this where you display product details
-                      Text(
-                        "Posted ${getTimeAgo(widget.product['timestamp'] ?? widget.product['createdAt'])}",
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey,
-                        ),
-                      ),
-
-                      const SizedBox(height: 5),
-                      Text(
-                        //"RM ${widget.product['price'] ?? '0'}",
-                        "RM ${(double.parse(widget.product['price'].toString())).toStringAsFixed(2)}",
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Color.fromARGB(255, 0, 0, 0),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      RichText(
-                        text: TextSpan(
-                          children: [
-                            const TextSpan(
-                              text: "Category\n",
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFF808569),
-                              ),
-                            ),
-                            TextSpan(
-                              text: "${widget.product['category'] ?? 'N/A'}",
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      RichText(
-                        text: TextSpan(
-                          children: [
-                            const TextSpan(
-                              text: "Condition\n",
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFF808569),
-                              ),
-                            ),
-                            TextSpan(
-                              text: "${widget.product['condition'] ?? 'N/A'}",
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      RichText(
-                        text: TextSpan(
-                          children: [
-                            const TextSpan(
-                              text: "Brand\n",
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFF808569),
-                              ),
-                            ),
-                            TextSpan(
-                              text:
-                                  "${widget.product['brand']?.toString().isEmpty ?? true 
-                                  ? 'N/A' 
-                                  : widget.product['brand']}",
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      RichText(
-                        text: TextSpan(
-                          children: [
-                            const TextSpan(
-                              text: "Description\n",
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFF808569),
-                              ),
-                            ),
-                            TextSpan(
-                              text:
-                                  "${widget.product['details']?.toString().isEmpty ?? true 
-                                  ? 'N/A' 
-                                  : widget.product['details']}",
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 20),
-                      const Divider(
-                        height: 20,
-                        thickness: 1,
-                        color: Colors.black26,
-                      ),
-                
-                    ],
-                  ),
-                ),
+                _buildProductContent(),
                 // Bottom padding for navigation bar
                 const SizedBox(height: 80),
               ],
             ),
           ),
-            Positioned(  // Add this at the end of Stack children
+            Positioned(  
               left: 0,
               right: 0,
               bottom: 0, 

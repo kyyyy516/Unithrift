@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:unithrift/sell/upload_product.dart';
-import 'package:unithrift/sell/upload_rental.dart';
-import 'package:unithrift/sell/upload_service.dart';
+import 'feature_upload.dart';
+import 'rental_upload.dart';
+import 'service_upload.dart';
+
 
 class MainUploadPage extends StatefulWidget {
   const MainUploadPage({super.key});
@@ -14,20 +15,29 @@ class _MainUploadPageState extends State<MainUploadPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: 
+          Text(
+                  "Ready to Sell?",
+                  style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  //fontSize: 28.0,
+                  ),
+                ),
+                //centerTitle: true,
+      ),
       backgroundColor: Colors.white,
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 30.0),
+        //padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 30.0),
+        padding: const EdgeInsets.only(
+          left: 24.0,
+          right: 24.0,
+          top: 30.0,
+          bottom: 30.0,  
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Ready to Sell?',
-              style: TextStyle(
-                fontSize: 23,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
             // const SizedBox(height: 8),
             // const Text(
             //   'Choose what you want to offer now!',
@@ -36,14 +46,14 @@ class _MainUploadPageState extends State<MainUploadPage> {
             //     color: Colors.grey,
             //   ),
             // ),
-            const SizedBox(height: 25),
+            //const SizedBox(height: 25),
 
             // Sell Products Card
             GestureDetector(
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const ProductUploadPage()),
+                  MaterialPageRoute(builder: (context) => const UploadFeaturePage()),
                 );
               },
               child: sellerOptionCard(
@@ -61,7 +71,7 @@ class _MainUploadPageState extends State<MainUploadPage> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const RentalUploadPage()),
+                  MaterialPageRoute(builder: (context) => const UploadRentalPage()),
                 );
               },
               child: sellerOptionCard(
@@ -79,7 +89,7 @@ class _MainUploadPageState extends State<MainUploadPage> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const ServiceUploadPage()),
+                  MaterialPageRoute(builder: (context) => const UploadServicePage()),
                 );
               },
               child: sellerOptionCard(

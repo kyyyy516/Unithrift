@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:unithrift/navigation%20bar/bottom_navbar.dart';
-import '../sell/edit_test.dart';
-import '../sell/listing_test.dart';
+import '../sell/edit/edit_rental.dart';
+import '../sell/edit/edit_feature.dart';
+import 'listing_details.dart';
 
 class AllProductPage extends StatefulWidget {
   const AllProductPage({super.key});
@@ -123,7 +124,9 @@ class _AllProductPageState extends State<AllProductPage> {
             onPressed: () => Navigator.of(context).pop(),
           ),
           TextButton(
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text('Delete', 
+            //style: TextStyle(color: Colors.red)
+          ),
             onPressed: () {
               Navigator.of(context).pop();
               _removeItem(productID);
@@ -304,170 +307,204 @@ class _AllProductPageState extends State<AllProductPage> {
 
   Widget _buildGridItem(Map<String, dynamic> item) {
     // Add this debug print
-    print('Item description: ${item['details']}');   // debug
-    print('Item data: $item');
+    // print('Item description: ${item['details']}');   
+    // print('Item data: $item');
 
     final bool isAvailable = item['isAvailable'] ?? true;
 
-    return Stack(
-      children: [
-        GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ListingPage(product: item),
-              ),
-            );
-          }, 
-          child: Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15),  // circular(8)
-            ),
+     // Helper function to build price text
+  Widget buildPriceText() {
+    if (_selectedTabIndex == 1) { // Rental tab
+      return RichText(
+  text: TextSpan(
+    children: [
+      TextSpan(
+        text: 'RM ${(double.parse(item['price'].toString())).toStringAsFixed(2)}',
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+          color: Colors.black,
+        ),
+      ),
+      TextSpan(
+        text: ' /day',
+        style: const TextStyle(
+          fontSize: 12,
+          color: Colors.grey,
+        ),
+      ),
+    ],
+  ),
+);
 
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Image container with fixed height
-              SizedBox(
-                height: 120,
-                width: double.infinity,
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-                  child: Image.network(
-                    item['imageUrl1'] ?? 'https://via.placeholder.com/200',
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Center(
-                        child: Icon(Icons.image_not_supported, size: 40),
-                      );
-                    },
+    } else { // Other tabs (Items and Services)
+      return Text(
+        'RM ${(double.parse(item['price'].toString())).toStringAsFixed(2)}',
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+        ),
+      );
+    }
+  }
+
+
+    return Card(
+      elevation: 2,
+      color: const Color(0xFFF2F3EC),
+      //color: const Color(0xFFE5E8D9),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),  // circular(8)
+      ),
+      child: Stack(  // Move Stack inside Card
+        children: [
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ListingDetailsPage(product: item),  // Show details when click 
+                ),
+              );
+            }, 
+
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Image container with fixed height
+                SizedBox(
+                  height: 120,
+                  width: double.infinity,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                    child: Image.network(
+                      item['imageUrl1'] ?? 'https://via.placeholder.com/200',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Center(
+                          child: Icon(Icons.image_not_supported, size: 40),
+                        );
+                      },
+                    ),
                   ),
                 ),
-              ),
-              // Content container
-              Expanded(
-                  child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Product Name
-                        Text(
-                          item['name'] ?? 'Unknown Item',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        
-                        // Description 
-                        if (item['details'] != null && item['details'].toString().isNotEmpty)
+                
+                // Content container
+                Expanded(
+                    child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Product Name
                           Text(
-                            item['details'],
+                            item['name'] ?? 'Unknown Item',
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
                             ),
                           ),
-                        const Spacer(),
-
-                        // Price and Remove Button
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
+                          const SizedBox(height: 4),
+                          
+                          // Description 
+                          if (item['details'] != null && item['details'].toString().isNotEmpty)
                             Text(
-                              'RM ${(double.parse(item['price'].toString())).toStringAsFixed(2)}',
+                              item['details'],
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
                                 fontSize: 12,
-                                //color: Colors.black,
                               ),
                             ),
-                            Row(
-                              children: [
-                                // Edit Button
-                                GestureDetector(
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => EditProductPage(
-                                        productID: item['productID'],
-                                        userID: item['userId'],
-                                      ),
-                                    ),
-                                  ),
-                                  child: const Icon(
-                                    Icons.edit,
-                                    color: Color(0xFF808569),
-                                    size: 18,
-                                  ),
-                                ),
-                                const SizedBox(width: 8), // Space between icons
+                          const Spacer(),
 
-                                GestureDetector(
-                                  onTap: () => _showDeleteConfirmation(item['productID']),
-                                  child: const Icon(
-                                    Icons.delete,
-                                    color: Color(0xFF808569),
-                                    size: 18,
-                                  ),
-                                ),
-                              ],
-                            ),    
-                          ],
-                        ),
-                      ],
-                    ),
-                ),
-            ),
-          ],
-        ),
-        ),
-        ),
-        if (!isAvailable)
-        Positioned.fill(
-          child: GestureDetector(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ListingPage(product: item),
-              ),
-            ),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.9),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircleAvatar(
-                    backgroundColor: const Color(0xFF808569),
-                    child: Icon(Icons.close, color: Colors.white),
+                          // Price and Remove Button
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              buildPriceText(),
+                              // Row(
+                              //   children: [
+                              //     // Edit Button
+                              //     GestureDetector(
+                              //       onTap: () => Navigator.push(
+                              //         context,
+                              //         MaterialPageRoute(
+                              //           builder: (context) => EditFeaturePage(
+                              //             productID: item['productID'],
+                              //             userID: item['userId'],
+                              //           ),
+                              //         ),
+                              //       ),
+                              //       child: const Icon(
+                              //         Icons.edit,
+                              //         color: Color(0xFF808569),
+                              //         size: 18,
+                              //       ),
+                              //     ),
+                              //     const SizedBox(width: 8), // Space between icons
+
+                              //     GestureDetector(
+                              //       onTap: () => _showDeleteConfirmation(item['productID']),
+                              //       child: const Icon(
+                              //         Icons.delete,
+                              //         color: Color(0xFF808569),
+                              //         size: 18,
+                              //       ),
+                              //     ),
+                              //   ],
+                              // ),    
+                            ],
+                          ),
+                        ],
+                      ),
                   ),
-                  SizedBox(height: 10),
-                  Text(
-                    'Make Available?',
-                    style: TextStyle(
-                      color: const Color(0xFF808569),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                ],
               ),
-            ),
+            ],
           ),
-        ),    
-      ],
+          ),
+
+          if (!isAvailable)
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ListingDetailsPage(product: item),
+                ),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.withOpacity(0.9),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: const Color(0xFF808569),
+                      child: Icon(Icons.close, color: Colors.white),
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      'Make Available?',
+                      style: TextStyle(
+                        color: const Color(0xFF808569),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),    
+        ],
+      ),
     );
   }
 }
