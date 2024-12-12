@@ -1,24 +1,27 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+//import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:file_picker/file_picker.dart';
+//import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:video_player/video_player.dart';
 import '../services/cloudinary_service.dart';
 import '../services/db_service.dart';
-import '../sell/publish_success.dart';
 
 
-class UploadFeaturePage extends StatefulWidget {
-  const UploadFeaturePage({super.key});
+class TestPage extends StatefulWidget {
+  //const TestPage(this.noAppBar, {super.key});
+  //final bool noAppBar;
+  const TestPage({super.key});
 
   @override
-  State<UploadFeaturePage> createState() => _UploadFeaturePageState();
+  State<TestPage> createState() => _TestPageState();
 }
 
-class _UploadFeaturePageState extends State<UploadFeaturePage> {
+class _TestPageState extends State<TestPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
@@ -32,25 +35,8 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
   bool _isUploading = false;
   static const int maxMedia = 3;
 
-  // Categories list
-  final List<String> _categories = [  // feature
-    'Books',
-    'Clothes',
-    'Furniture',
-    'Electronics',
-    'Others'
-    // 'Mobile Phones & Gadgets',
-    // 'Beauty & Personal Care',
-    // 'Tickets',
-    // 'Stationary',
-    // 'Other'
-  ];
-  // Selected category
-  String? _selectedCategory;
-
-
-  // Condition Options
-  final List<String> _conditions = [
+  // Product Condition Options
+  final List<String> _conditionOptions = [
     'New',
     'Like New',
     'Gently Used',
@@ -58,6 +44,21 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
     'Repair'
   ];
   String? _selectedCondition;
+
+  // Categories list
+  final List<String> _categories = [
+    'Books',
+    'Clothes',
+    'Electronics',
+    'Furniture',
+    'Mobile Phones & Gadgets',
+    'Beauty & Personal Care',
+    'Tickets',
+    'Stationary',
+    'Other'
+  ];
+  // Selected category
+  String? _selectedCategory;
 
   // Enhanced product validation method
   bool _validateProductDetails() {
@@ -303,10 +304,8 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
 
       // Prepare product data with null safety
       final productData = {
-        'name': _nameController.text.trim(),  // removes any leading and trailing whitespace from a string.
-        //'price': double.parse(_priceController.text.trim()),
-        // toStringAsFixed() returns a String, if you need it as a double, wrap it with double.parse
-        'price': double.parse(double.parse(_priceController.text.trim()).toStringAsFixed(2)),
+        'name': _nameController.text.trim(),
+        'price': double.parse(_priceController.text.trim()),
         'details': _detailsController.text.trim(),
         'brand': _brandController.text.trim(),
         'category': _selectedCategory, // 'category': _selectedCategory!,
@@ -332,11 +331,6 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
           .collection('products')
           .add(productData);
 
-          // Add debug prints here
-          // print('Navigating to success page with:');
-          // print('Product ID: ${productDoc.id}');
-          // print('User ID: ${currentUser.uid}');
-
       // Update the document with its own ID
       await productDoc.update({'productId': productDoc.id});
 
@@ -346,20 +340,7 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
               content: Text('${_nameController.text} uploaded successfully!')),
         );
 
-        // Navigate to the "Publish Successful!" page with product ID
-        // Navigator.pushReplacement(
-        //   context,
-        //   MaterialPageRoute(
-        //     builder: (_) => PublishSuccessfulPage(
-        //       productID: productDoc.id,
-        //       userID: currentUser.uid,
-              
-        //     )
-            
-        //   ),
-        // );
-
-
+        //_formKey.currentState!.reset();
         // With this safer version
         if (_formKey.currentState != null) {
           _formKey.currentState!.reset();
@@ -381,7 +362,6 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
       if (mounted) {
         print('Error details: $e');
         print('Stack trace: $stackTrace');
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Upload failed: $e')),
         );
@@ -454,6 +434,11 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // const SizedBox(height: 1),
+                    // const Padding(
+                    //   padding: EdgeInsets.symmetric(vertical: 5.0),
+                      
+                    // ),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         foregroundColor: Colors.white, // Text color
@@ -554,7 +539,7 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
                       ),
                       value: _selectedCondition,
                       hint: const Text('Select a Condition'),
-                      items: _conditions.map((String condition) {
+                      items: _conditionOptions.map((String condition) {
                         return DropdownMenuItem<String>(
                           value: condition,
                           child: Text(condition),
@@ -602,7 +587,7 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
                     TextFormField(
                       controller: _detailsController,
                       decoration: const InputDecoration(
-                        labelText: 'Description',
+                        labelText: 'Details',
                         border: OutlineInputBorder(),
                       ),
                       maxLines: 3,
@@ -629,7 +614,7 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
                         elevation: 3, // Shadow elevation
                       ),
                       onPressed: _uploadProduct,
-                      child: const Text('Upload Now'),
+                      child: const Text('Upload Product'),
                     ),
                   ],
                 ),

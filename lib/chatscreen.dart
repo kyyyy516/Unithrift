@@ -66,7 +66,9 @@ class _ChatScreenState extends State<ChatScreen> {
               }
 
               final chatData = snapshot.data!.data() as Map<String, dynamic>;
-              if (chatData.containsKey('productId')) {
+
+              if (chatData['contextType'] == 'sales') {
+                // Sales page chat
                 return Container(
                   color: Colors.grey[100],
                   padding: const EdgeInsets.all(8.0),
@@ -89,7 +91,40 @@ class _ChatScreenState extends State<ChatScreen> {
                                 fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                           Text(
-                            'ID: ${chatData['productId']}',
+                            'Order ID: ${chatData['orderId']}',
+                            style: const TextStyle(
+                                fontSize: 14, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              } else if (chatData['contextType'] == 'product') {
+                // Product page chat
+                return Container(
+                  color: Colors.grey[100],
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    children: [
+                      if (chatData['productImage'] != null)
+                        Image.network(
+                          chatData['productImage'],
+                          width: 60,
+                          height: 60,
+                          fit: BoxFit.cover,
+                        ),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            chatData['productName'] ?? 'Product',
+                            style: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            'Product ID: ${chatData['productId']}',
                             style: const TextStyle(
                                 fontSize: 14, color: Colors.grey),
                           ),
@@ -103,6 +138,7 @@ class _ChatScreenState extends State<ChatScreen> {
               return const SizedBox.shrink();
             },
           ),
+
           const Divider(height: 1),
           Expanded(
             child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(

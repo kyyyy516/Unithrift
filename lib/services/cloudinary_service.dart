@@ -1,7 +1,6 @@
 // uploading files to cloudinary
 import 'dart:convert';
 import 'dart:io';
-import 'package:file_picker/file_picker.dart';
 import '../services/db_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import "package:http/http.dart" as http;
@@ -9,13 +8,7 @@ import 'package:crypto/crypto.dart';
 //import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart'; // For accessing device directories
 
-
 Future<String> uploadToCloudinary(File mediaFile) async {
-  
-  if (mediaFile == null) {
-    return "No file selected!";
-  }
-
   String cloudName = dotenv.env['CLOUDINARY_CLOUD_NAME'] ?? '';
 
   // Create a MultipartRequest to upload the file
@@ -35,7 +28,7 @@ Future<String> uploadToCloudinary(File mediaFile) async {
   request.files.add(multipartFile);
 
   request.fields['upload_preset'] = "preset-for-file-upload";
-  request.fields['resource_type'] = 
+  request.fields['resource_type'] =
       mediaFile.path.toLowerCase().endsWith('.mp4') ? "video" : "raw";
 
   // Send the request and await the response
@@ -44,8 +37,7 @@ Future<String> uploadToCloudinary(File mediaFile) async {
   // Get the response as text
   var responseBody = await response.stream.bytesToString();
 
-  try{
-
+  try {
     if (response.statusCode == 200) {
       var jsonResponse = jsonDecode(responseBody);
       Map<String, String> requiredData = {
@@ -62,31 +54,26 @@ Future<String> uploadToCloudinary(File mediaFile) async {
     } else {
       return "Upload failed with status: ${response.statusCode}";
     }
-
-  } catch(e, stackTrace){
-      print('Error details: $e');
-      print('Stack trace: $stackTrace');
-      return "Upload failed with exception status: ${response.statusCode}";
+  } catch (e, stackTrace) {
+    print('Error details: $e');
+    print('Stack trace: $stackTrace');
+    return "Upload failed with exception status: ${response.statusCode}";
   }
 }
-
-
 
 // delete specific file from cloudinary
 Future<bool> deleteFromCloudinary(String publicId) async {
   // Cloudinary details
-  String cloudName = dotenv.env['CLOUDINARY_CLOUD_NAME'] ?? ''; // Replace with your Cloudinary cloud name
+  String cloudName = dotenv.env['CLOUDINARY_CLOUD_NAME'] ??
+      ''; // Replace with your Cloudinary cloud name
   String apiKey = dotenv.env['CLOUDINARY_API_KEY'] ?? '';
   String apiSecret = dotenv.env['CLOUDINARY_SECRET_KEY'] ?? '';
-
 
   // Generate the timestamp
   int timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
-
   // Prepare the string for signature generation
   String toSign = 'public_id=$publicId&timestamp=$timestamp$apiSecret';
-
 
   // Generate the signature using SHA1
   var bytes = utf8.encode(toSign);
@@ -95,7 +82,6 @@ Future<bool> deleteFromCloudinary(String publicId) async {
   // Prepare the request URL
   var uri =
       Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/raw/destroy/');
-
 
   // Create the request
   var response = await http.post(
@@ -107,7 +93,6 @@ Future<bool> deleteFromCloudinary(String publicId) async {
       'signature': signature,
     },
   );
-
 
   if (response.statusCode == 200) {
     var responseBody = jsonDecode(response.body);
@@ -126,7 +111,6 @@ Future<bool> deleteFromCloudinary(String publicId) async {
   }
 }
 
-
 // download the user file inside the download folder
 Future<bool> downloadFileFromCloudinary(String url, String fileName) async {
   try {
@@ -142,7 +126,6 @@ Future<bool> downloadFileFromCloudinary(String url, String fileName) async {
       await openAppSettings();
     }
 
-
     // Get the Downloads directory
     Directory? downloadsDir = Directory('/storage/emulated/0/Download');
     if (!downloadsDir.existsSync()) {
@@ -150,10 +133,8 @@ Future<bool> downloadFileFromCloudinary(String url, String fileName) async {
       return false;
     }
 
-
     // Create the file path
     String filePath = '${downloadsDir.path}/$fileName';
-
 
     // Make the HTTP GET request
     var response = await http.get(Uri.parse(url));
@@ -161,7 +142,6 @@ Future<bool> downloadFileFromCloudinary(String url, String fileName) async {
       // Write file to Downloads folder
       File file = File(filePath);
       await file.writeAsBytes(response.bodyBytes);
-
 
       print("File downloaded successfully! Saved at: $filePath");
       return true;

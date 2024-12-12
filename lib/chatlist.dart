@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'firestore_service.dart';
 import 'chatscreen.dart';
 
 class ChatList extends StatefulWidget {
@@ -106,7 +105,7 @@ class _ChatListState extends State<ChatList> {
                   final userData =
                       userSnapshot.data!.data() as Map<String, dynamic>;
                   final userName = userData['username'] ?? 'Unknown Username';
-                  final profilePic = userData['profilePic'] ?? '';
+                  final profileImage = userData['profileImage'] ?? '';
 
                   return Container(
                     padding: const EdgeInsets.symmetric(
@@ -138,8 +137,8 @@ class _ChatListState extends State<ChatList> {
                         children: [
                           CircleAvatar(
                             radius: 24, // Smaller size for avatar
-                            backgroundImage: profilePic.isNotEmpty
-                                ? NetworkImage(profilePic)
+                            backgroundImage: profileImage.isNotEmpty
+                                ? NetworkImage(profileImage)
                                 : const AssetImage('assets/default_avatar.png')
                                     as ImageProvider,
                           ),

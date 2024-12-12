@@ -59,6 +59,8 @@ class _RegisterState extends State<Register> {
     await FirebaseFirestore.instance.collection('users').doc(uid).set({
       'email': email.text.trim(),
       'userId': uid, // Add the userId here
+      'fullName': fullName.text.trim(), // Save the full name
+      'phoneNumber': phoneNumber.text.trim(), // Save the phone number
     });
 
     // Show confirmation message

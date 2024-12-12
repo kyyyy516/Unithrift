@@ -119,17 +119,15 @@ class _NotificationPageState extends State<NotificationPage> {
 
   Widget _buildNotificationList(String userId, String category) {
     final query = FirebaseFirestore.instance
-        .collection('notifications')
+        .collection('users')
         .doc(userId)
         .collection('notifications');
 
+    // Adjust filtering logic based on category
     final filteredQuery = category == "All"
         ? query.orderBy('timestamp', descending: true)
         : query
-            .where('type',
-                whereIn: category == "orders"
-                    ? ["sell", "rent", "service"] // Seller notifications
-                    : ["buyer"])
+            .where('type', isEqualTo: category == "orders" ? "manage" : "track")
             .orderBy('timestamp', descending: true);
 
     return StreamBuilder<QuerySnapshot>(
@@ -149,11 +147,13 @@ class _NotificationPageState extends State<NotificationPage> {
 
         if (notifications.isEmpty) {
           return Center(
-            child: Text(category == "All"
-                ? "No notifications available."
-                : category == "orders"
-                    ? "No order management notifications."
-                    : "No order tracking notifications."),
+            child: Text(
+              category == "All"
+                  ? "No notifications available."
+                  : category == "orders"
+                      ? "No order management notifications."
+                      : "No order tracking notifications.",
+            ),
           );
         }
 
@@ -179,14 +179,18 @@ class _NotificationPageState extends State<NotificationPage> {
                   borderRadius: BorderRadius.circular(12.0),
                 ),
                 child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: const Color(0xFFE5E8D9),
-                    child: Icon(
-                      notification['type'] == 'buyer'
-                          ? Icons.shopping_cart
-                          : Icons.assignment_turned_in,
-                      color: Colors.black,
-                    ),
+                  leading: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: notification['productImageUrl'] != null
+                        ? Image.network(
+                            notification['productImageUrl'],
+                            width: 50,
+                            height: 50,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(Icons.image_not_supported),
+                          )
+                        : const Icon(Icons.image),
                   ),
                   title: Text(
                     notification['title'],
@@ -213,33 +217,26 @@ class _NotificationPageState extends State<NotificationPage> {
                       ),
                     ],
                   ),
-                  trailing: Container(
-                    width: 24, // Fixed width for the icon container
-                    height: 24, // Fixed height for the icon container
-                    alignment: Alignment.center, // Center align the icon
-                    child: notification['isRead']
-                        ? const Icon(Icons.check_circle,
-                            color: Colors.green, size: 20)
-                        : IconButton(
-                            padding: EdgeInsets
-                                .zero, // Remove extra padding around the button
-                            icon: const Icon(Icons.circle,
-                                color: Colors.red, size: 20),
-                            onPressed: () {
-                              FirebaseFirestore.instance
-                                  .collection('notifications')
-                                  .doc(userId)
-                                  .collection('notifications')
-                                  .doc(notifications[index].id)
-                                  .update({'isRead': true});
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text("Notification marked as read"),
-                                ),
-                              );
-                            },
-                          ),
-                  ),
+                  trailing: notification['isRead']
+                      ? const Icon(Icons.check_circle,
+                          color: Colors.green, size: 20)
+                      : IconButton(
+                          icon: const Icon(Icons.circle,
+                              color: Colors.red, size: 20),
+                          onPressed: () {
+                            FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(userId)
+                                .collection('notifications')
+                                .doc(notifications[index].id)
+                                .update({'isRead': true});
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Notification marked as read"),
+                              ),
+                            );
+                          },
+                        ),
                 ),
               ),
             );

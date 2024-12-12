@@ -5,12 +5,11 @@ import 'package:unithrift/cart/cart.dart';
 import 'package:unithrift/homepage.dart';
 import 'package:unithrift/notification_page.dart';
 import 'package:unithrift/sell/account_test.dart';
-import 'package:unithrift/sell/feature_upload.dart';
+import 'package:unithrift/sell/product_test.dart';
 //import 'package:unithrift/sell/try_upload.dart';
 //import 'package:unithrift/sell/upload_main.dart';
 import '../explore/explore.dart';
 import '../sell/upload_main.dart';
-import '../sell/rental_upload.dart';
 
 
 const List<Widget> pages = <Widget>[
@@ -19,8 +18,7 @@ const List<Widget> pages = <Widget>[
   MainUploadPage(),
   Cart(true),
   //Text('Account Page'),
-  AccountPage(),
-  
+  AccountInfo(),
 ];
 
 void commonNavigate(BuildContext context, int index) {
@@ -39,30 +37,29 @@ void commonNavigate(BuildContext context, int index) {
       );
       break;
     case 2: // Sell
-    Navigator.push(
+      Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const MainUploadPage()),
       );
       break;
     case 3:
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const Cart(false),
-          ),
-        );
-        break;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const Cart(false),
+        ),
+      );
+      break;
     case 4: // Account
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const AccountPage(), // Replace with your account page;
-          ),
-        );
-        break;
-    }
-    
-  
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              const AccountInfo(), // Replace with your account page;
+        ),
+      );
+      break;
+  }
 }
 
 Widget mainBottomNavBar(int selectedIndex, Function(int) onItemTapped) {
@@ -82,8 +79,8 @@ Widget mainBottomNavBar(int selectedIndex, Function(int) onItemTapped) {
         label: 'Update',
         index: 1,
         stream: FirebaseFirestore.instance
-            .collection('notifications')
-            .doc(user!.uid)
+            .collection('users')
+            .doc(user!.uid) // Reference the correct user document
             .collection('notifications')
             .where('isRead', isEqualTo: false)
             .snapshots(),

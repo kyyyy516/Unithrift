@@ -143,9 +143,9 @@ class _CartState extends State<Cart> {
                   Navigator.pop(context);
                 },
               ),
-              title: Row(
+              title: const Row(
                 mainAxisSize: MainAxisSize.min,
-                children: const [
+                children: [
                   Icon(Icons.shopping_cart),
                   SizedBox(width: 8),
                   Text('My Cart'),
@@ -459,8 +459,7 @@ class _CartState extends State<Cart> {
                                 );
                               },
                             ),
-                          ]
-                         else if (_selectedTabIndex == 2) ...[
+                          ] else if (_selectedTabIndex == 2) ...[
                             const SizedBox(height: 8),
                             // Service Date
                             const Text(
@@ -499,7 +498,6 @@ class _CartState extends State<Cart> {
                                           fontSize: 15,
                                         ),
                                       ),
-                                     
                                     ],
                                   ),
                                 ),

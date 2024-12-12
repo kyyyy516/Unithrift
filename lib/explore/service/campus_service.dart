@@ -1,9 +1,7 @@
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import 'package:unithrift/explore/feature/item_feature.dart';
 import 'package:unithrift/explore/service/item_service.dart';
 import 'package:unithrift/navigation%20bar/bottom_navbar.dart';
 import 'package:unithrift/navigation%20bar/common_appbar.dart';
@@ -91,7 +89,6 @@ class _CampusServiceState extends State<CampusService> {
     });
   }
 
-  
   void _showCategoryBottomSheet() {
     showModalBottomSheet(
       context: context,
@@ -161,10 +158,10 @@ class _CampusServiceState extends State<CampusService> {
       builder: (context, child) {
         return Theme(
           data: ThemeData.light().copyWith(
-            colorScheme: ColorScheme.light(
-              primary: const Color(0xFF424632),
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF424632),
               onPrimary: Colors.white,
-              surface: const Color(0xFFF2F3EC),
+              surface: Color(0xFFF2F3EC),
               onSurface: Colors.black,
             ),
           ),
@@ -461,12 +458,6 @@ class _CampusServiceState extends State<CampusService> {
       bottomNavigationBar: mainBottomNavBar(_selectedIndex, _onItemTapped),
     ); // End of Scaffold
   } // End of build method
-
-
-
-
-
-
 
   Widget _campusService(Map<String, dynamic> product, double width) {
     List<String> images = [

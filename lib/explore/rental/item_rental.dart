@@ -175,36 +175,35 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
   }
 
   String getTimeAgo(dynamic timestamp) {
-  if (timestamp == null) return 'Recently';
+    if (timestamp == null) return 'Recently';
 
-  DateTime uploadTime;
-  if (timestamp is Timestamp) {
-    uploadTime = timestamp.toDate();
-  } else if (timestamp is int) {
-    uploadTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
-  } else {
-    return 'Recently';
+    DateTime uploadTime;
+    if (timestamp is Timestamp) {
+      uploadTime = timestamp.toDate();
+    } else if (timestamp is int) {
+      uploadTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
+    } else {
+      return 'Recently';
+    }
+
+    Duration difference = DateTime.now().difference(uploadTime);
+
+    if (difference.inSeconds < 60) {
+      return '${difference.inSeconds} seconds ago';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} minutes ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours} hours ago';
+    } else if (difference.inDays < 30) {
+      return '${difference.inDays} days ago';
+    } else if (difference.inDays < 365) {
+      int months = (difference.inDays / 30).floor();
+      return '$months months ago';
+    } else {
+      int years = (difference.inDays / 365).floor();
+      return '$years years ago';
+    }
   }
-
-  Duration difference = DateTime.now().difference(uploadTime);
-
-  if (difference.inSeconds < 60) {
-    return '${difference.inSeconds} seconds ago';
-  } else if (difference.inMinutes < 60) {
-    return '${difference.inMinutes} minutes ago';
-  } else if (difference.inHours < 24) {
-    return '${difference.inHours} hours ago';
-  } else if (difference.inDays < 30) {
-    return '${difference.inDays} days ago';
-  } else if (difference.inDays < 365) {
-    int months = (difference.inDays / 30).floor();
-    return '$months months ago';
-  } else {
-    int years = (difference.inDays / 365).floor();
-    return '$years years ago';
-  }
-}
-
 
   void _addToCart(Map<String, dynamic> product, String type) async {
     try {
@@ -970,7 +969,7 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                         ),
                       ),
                       // Add this where you display product details
-                          const SizedBox(height: 5),
+                      const SizedBox(height: 5),
                       Text(
                         "Posted ${getTimeAgo(widget.product['timestamp'] ?? widget.product['createdAt'])}",
                         style: const TextStyle(
@@ -1137,28 +1136,33 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                             .doc(chatId)
                             .get();
 
-                        // Update product context or create a new chat room
+                        // Create or update the chat room with product-specific details
                         if (!chatDoc.exists) {
                           // Create chat room if it doesn't exist
-                          await FirestoreService().createChatRoom(
-                            chatId,
-                            currentUser.uid,
-                            sellerUserId,
-                          );
+                          await FirebaseFirestore.instance
+                              .collection('chats')
+                              .doc(chatId)
+                              .set({
+                            'users': [currentUser.uid, sellerUserId],
+                            'createdAt': FieldValue.serverTimestamp(),
+                            'contextType':
+                                'product', // Indicates chat initiated from product page
+                            'productId': widget.product['productID'],
+                            'productName': widget.product['name'],
+                            'productImage': widget.product['imageUrl1'],
+                          });
+                        } else {
+                          // Update product details in the chat room
+                          await FirebaseFirestore.instance
+                              .collection('chats')
+                              .doc(chatId)
+                              .update({
+                            'contextType': 'product', // Ensure correct context
+                            'productId': widget.product['productID'],
+                            'productName': widget.product['name'],
+                            'productImage': widget.product['imageUrl1'],
+                          });
                         }
-
-                        // Always update the product metadata in the chat document
-                        await FirebaseFirestore.instance
-                            .collection('chats')
-                            .doc(chatId)
-                            .set({
-                          'productId': widget.product['productID'],
-                          'productName': widget.product['name'],
-                          'productImage':
-                              widget.product['imageUrl1'], // Optional
-                          'lastProductInquiryTime':
-                              FieldValue.serverTimestamp(),
-                        }, SetOptions(merge: true));
 
                         // Send a message indicating interest in the product
                         await FirestoreService().sendMessage(

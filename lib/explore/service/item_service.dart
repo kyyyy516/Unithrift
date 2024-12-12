@@ -1139,28 +1139,33 @@ class _ItemServicePageState extends State<ItemServicePage> {
                             .doc(chatId)
                             .get();
 
-                        // Update product context or create a new chat room
+                        // Create or update the chat room with product-specific details
                         if (!chatDoc.exists) {
                           // Create chat room if it doesn't exist
-                          await FirestoreService().createChatRoom(
-                            chatId,
-                            currentUser.uid,
-                            sellerUserId,
-                          );
+                          await FirebaseFirestore.instance
+                              .collection('chats')
+                              .doc(chatId)
+                              .set({
+                            'users': [currentUser.uid, sellerUserId],
+                            'createdAt': FieldValue.serverTimestamp(),
+                            'contextType':
+                                'product', // Indicates chat initiated from product page
+                            'productId': widget.product['productID'],
+                            'productName': widget.product['name'],
+                            'productImage': widget.product['imageUrl1'],
+                          });
+                        } else {
+                          // Update product details in the chat room
+                          await FirebaseFirestore.instance
+                              .collection('chats')
+                              .doc(chatId)
+                              .update({
+                            'contextType': 'product', // Ensure correct context
+                            'productId': widget.product['productID'],
+                            'productName': widget.product['name'],
+                            'productImage': widget.product['imageUrl1'],
+                          });
                         }
-
-                        // Always update the product metadata in the chat document
-                        await FirebaseFirestore.instance
-                            .collection('chats')
-                            .doc(chatId)
-                            .set({
-                          'productId': widget.product['productID'],
-                          'productName': widget.product['name'],
-                          'productImage':
-                              widget.product['imageUrl1'], // Optional
-                          'lastProductInquiryTime':
-                              FieldValue.serverTimestamp(),
-                        }, SetOptions(merge: true));
 
                         // Send a message indicating interest in the product
                         await FirestoreService().sendMessage(

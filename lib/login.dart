@@ -15,7 +15,7 @@ void main() {
 }
 
 class Login extends StatefulWidget {
-  const Login({Key? key, this.successMessage}) : super(key: key);
+  const Login({super.key, this.successMessage});
   final String? successMessage; // Add this to show a message
 
   @override

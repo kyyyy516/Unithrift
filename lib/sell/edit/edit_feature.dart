@@ -7,40 +7,25 @@ import 'package:chewie/chewie.dart';
 import 'dart:math' show min; // Add this import at the top
 import 'package:unithrift/firestore_service.dart';
 
-class EditFeaturePage extends StatefulWidget {
+class EditProductPage extends StatefulWidget {
+  //final Map<String, dynamic> product;
   final String productID;
   final String userID;
 
-  const EditFeaturePage({
+  const EditProductPage({
     super.key, 
     required this.productID,
     required this.userID,
   });
 
   @override
-  State<EditFeaturePage> createState() => _EditFeaturePageState();
+  State<EditProductPage> createState() => _EditProductPageState();
 }
 
-class _EditFeaturePageState extends State<EditFeaturePage> {
+class _EditProductPageState extends State<EditProductPage> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = true;
   Map<String, dynamic>? _productData;
-
-  final List<String> _categories = [
-    'Books', // feature
-    'Clothes',
-    'Furniture',
-    'Electronics',
-    'Others'
-  ];
-
-  final List<String> _conditions = [
-    'New',
-    'Like New',
-    'Gently Used',
-    'Well-Worn',
-    'Repair'
-  ];
 
   late TextEditingController _nameController;
   late TextEditingController _priceController;
@@ -67,67 +52,6 @@ class _EditFeaturePageState extends State<EditFeaturePage> {
     _fetchProductData();
   }
 
-  // Enhanced product validation method
-  bool _validateDetails() {
-
-    // Name length validation
-    final name = _nameController.text.trim();
-    if (name.length < 3) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Item name must be at least 3 characters long.')),
-      );
-      return false;
-    }
-
-    if (name.length > 100) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Item name must be less than 100 characters.')),
-      );
-      return false;
-    }
-
-    // Details length validation
-    final details = _detailsController.text.trim();
-    if (details.isNotEmpty && details.length > 500) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Item details must be less than 500 characters.')),
-      );
-      return false;
-    }
-
-
-    // Price validation with more specific conditions
-    final price = double.tryParse(_priceController.text.trim());
-    if (price == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Invalid price. Please enter a valid number.')),
-      );
-      return false;
-    }
-
-    // Price range validation
-    if (price <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Price must be greater than 0.')),
-      );
-      return false;
-    }
-
-    if (price > 1000000) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Price is too high. Maximum price is 1,000,000.')),
-      );
-      return false;
-    }
-
-    return true;
-  }
-
     Future<void> _fetchProductData() async {
     try {
       final doc = await FirebaseFirestore.instance
@@ -147,7 +71,6 @@ class _EditFeaturePageState extends State<EditFeaturePage> {
           _category = _productData?['category'] ?? 'Uncategorized';
           _condition = _productData?['condition'] ?? 'Unknown';
 
-
           // Set initial values after data is loaded
           _initialName = _nameController.text;
           _initialPrice = _priceController.text;
@@ -161,7 +84,7 @@ class _EditFeaturePageState extends State<EditFeaturePage> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Item not found')),
+            const SnackBar(content: Text('Product not found')),
           );
           Navigator.pop(context);
         }
@@ -169,7 +92,7 @@ class _EditFeaturePageState extends State<EditFeaturePage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading item: $e')),
+          SnackBar(content: Text('Error loading product: $e')),
         );
         Navigator.pop(context);
       }
@@ -186,10 +109,6 @@ class _EditFeaturePageState extends State<EditFeaturePage> {
   }
 
   Future<void> _updateProduct() async {
-    if (!_validateDetails()) {
-        return;
-      }
-
     if (!_formKey.currentState!.validate()) return;
 
     // Check if any changes were made
@@ -216,8 +135,7 @@ class _EditFeaturePageState extends State<EditFeaturePage> {
           .doc(widget.productID)
           .update({
         'name': _nameController.text.trim(),
-        //'price': double.tryParse(_priceController.text) ?? 0.0,
-        'price': double.parse(double.parse(_priceController.text.trim()).toStringAsFixed(2)),
+        'price': double.tryParse(_priceController.text) ?? 0.0,
         'details': _detailsController.text.trim(),
         'brand': _brandController.text.trim(),
         'category': _category,
@@ -225,23 +143,22 @@ class _EditFeaturePageState extends State<EditFeaturePage> {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Updated successfully')),
+          const SnackBar(content: Text('Product updated successfully')),
         );
-        // Refresh the parent page
-        Navigator.pop(context, true);
+        Navigator.pop(context);
       }
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating: $e')),
+          SnackBar(content: Text('Error updating product: $e')),
         );
       }
     }
   }
+
 
 
   @override
@@ -257,57 +174,6 @@ class _EditFeaturePageState extends State<EditFeaturePage> {
             child: ListView(
               padding: const EdgeInsets.all(16.0),
               children: [
-                // Add these widgets in the ListView children
-                DropdownButtonFormField<String>(
-                  value: _category,
-                  iconEnabledColor: Color(0xFF808569), // Add this line to change arrow color
-                  decoration: const InputDecoration(
-                    labelText: 'Category',
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Color(0xFF808569)),
-                    ),
-                    labelStyle: TextStyle(color: Colors.grey),
-                    floatingLabelStyle: TextStyle(color: Color(0xFF808569)),
-                  ),
-                  items: _categories.map((String category) {
-                    return DropdownMenuItem<String>(
-                      value: category,
-                      child: Text(category),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      _category = newValue ?? 'Uncategorized';
-                    });
-                  },
-                ),
-
-                const SizedBox(height: 20),
-                DropdownButtonFormField<String>(
-                  value: _condition,
-                  iconEnabledColor: Color(0xFF808569), // Add this line to change arrow color
-                  decoration: const InputDecoration(
-                    labelText: 'Condition',
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Color(0xFF808569)),
-                    ),
-                    labelStyle: TextStyle(color: Colors.grey),
-                    floatingLabelStyle: TextStyle(color: Color(0xFF808569)),
-                  ),
-                  items: _conditions.map((String condition) {
-                    return DropdownMenuItem<String>(
-                      value: condition,
-                      child: Text(condition),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      _condition = newValue ?? 'Unknown';
-                    });
-                  },
-                ),
-
-                const SizedBox(height: 20),
                 TextFormField(
                   controller: _nameController,
                   cursorColor: Color(0xFF808569),
@@ -324,8 +190,6 @@ class _EditFeaturePageState extends State<EditFeaturePage> {
                   validator: (value) =>
                       value?.isEmpty ?? true ? 'Please enter a name' : null,
                 ),
-
-                const SizedBox(height: 20),
                 TextFormField(
                   controller: _priceController,
                   decoration: const InputDecoration(
@@ -340,8 +204,6 @@ class _EditFeaturePageState extends State<EditFeaturePage> {
                   validator: (value) =>
                       value?.isEmpty ?? true ? 'Please enter a price' : null,
                 ),
-
-                const SizedBox(height: 20),
                 TextFormField(
                   controller: _detailsController,
                   decoration: const InputDecoration(
@@ -356,8 +218,6 @@ class _EditFeaturePageState extends State<EditFeaturePage> {
                   ),
                   maxLines: 3,
                 ),
-
-                const SizedBox(height: 20),
                 TextFormField(
                   controller: _brandController,
                   decoration: const InputDecoration(
@@ -373,20 +233,13 @@ class _EditFeaturePageState extends State<EditFeaturePage> {
                   maxLines: 3,
                 ),
                 // Add more fields as needed
-                const SizedBox(height: 30),
+                const SizedBox(height: 20),
 
                 ElevatedButton(
                   onPressed: _updateProduct,
                   style: ElevatedButton.styleFrom(
                     backgroundColor:
                       const Color(0xFF808569),
-                    foregroundColor: Colors.white, // Text color
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(10), // Rounded corners
-                    ),
-                    elevation: 3, // Shadow elevation
                   ),
                   child: const Text('Update'),
                 ),
