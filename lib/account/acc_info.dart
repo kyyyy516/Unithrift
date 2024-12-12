@@ -8,7 +8,8 @@ import 'package:unithrift/account/my_sales.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart'; // Add this import
+import 'package:font_awesome_flutter/font_awesome_flutter.dart'; 
+import '../sell/my_listing.dart';
 
 class AccountInfo extends StatefulWidget {
   const AccountInfo({super.key});
@@ -82,7 +83,7 @@ class _AccountInfoState extends State<AccountInfo> {
     }
   }
 
-  Future<void> _pickAndUploadImage() async {
+    Future<void> _pickAndUploadImage(String type) async {
     try {
       final XFile? pickedFile =
           await _picker.pickImage(source: ImageSource.gallery);
@@ -100,20 +101,27 @@ class _AccountInfoState extends State<AccountInfo> {
       // Upload to ImgBB
       final String imgbbUrl = await _uploadToImgBB(filePath);
 
-      // Store the image URL in Firestore
+      // Store the image URL in Firestore based on type (profile or background)
       User? user = _auth.currentUser;
       if (user != null) {
-        await _firestore.collection('users').doc(user.uid).update({
-          'profileImage': imgbbUrl,
-        });
-
-        setState(() {
-          userData!['profileImage'] = imgbbUrl;
-        });
+        if (type == 'profile') {
+          await _firestore.collection('users').doc(user.uid).update({
+            'profileImage': imgbbUrl,
+          });
+          setState(() {
+            userData!['profileImage'] = imgbbUrl;
+          });
+        } else if (type == 'background') {
+          await _firestore.collection('users').doc(user.uid).update({
+            'backgroundImage': imgbbUrl,
+          });
+          setState(() {
+            userData!['backgroundImage'] = imgbbUrl;
+          });
+        }
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Profile picture updated successfully!')),
+          const SnackBar(content: Text('Image updated successfully!')),
         );
       }
     } catch (e) {
@@ -172,16 +180,48 @@ class _AccountInfoState extends State<AccountInfo> {
     }
   }
 
+ // Function to launch URLs
   Future<void> _launchURL(String url) async {
-    print("Launching URL: $url"); // Debugging line
-    if (await canLaunch(url)) {
-      await launch(url);
+    print("Attempting to launch URL: $url");  // Debugging line
+    final Uri uri = Uri.parse(url);  // Make sure URL is properly parsed
+
+    // Checking if the URL can be launched
+    if (await canLaunch(uri.toString())) {
+      print("Launching URL: $url");  // Debugging line
+      await launch(uri.toString());
     } else {
+      print("Error: Could not launch the URL");  // Debugging line
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Could not open the link')),
       );
     }
   }
+
+  Future<void> _deleteBackgroundImage() async {
+  try {
+    User? user = _auth.currentUser;
+    if (user != null) {
+      // Remove the backgroundImage field from Firestore
+      await _firestore.collection('users').doc(user.uid).update({
+        'backgroundImage': FieldValue.delete(),
+      });
+
+      // Update the local state to reflect the deletion
+      setState(() {
+        userData!['backgroundImage'] = null;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Background image removed successfully!')),
+      );
+    }
+  } catch (e) {
+    print("Error deleting background image: $e");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error removing background image: $e')),
+    );
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -266,9 +306,63 @@ class _AccountInfoState extends State<AccountInfo> {
           return Column(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 20),
                 color: Colors.green[100],
-                child: Column(
+                child: Stack(
+          children: [
+          // The background section
+          Container(
+          height: 200, // Match the green area size
+          width: double.infinity,
+          decoration: BoxDecoration(
+            image: userData['backgroundImage'] != null
+              ? DecorationImage(
+                image: NetworkImage(userData['backgroundImage']),
+                fit: BoxFit.cover, // Ensures the image covers the entire container
+              )
+            : null,
+          color: Colors.green[100], // Fallback green color if no image is set
+        ),
+        child: Stack(
+          children: [
+            // "Change Background" button positioned in the top-right corner
+            Positioned(
+              top: 10, // Adjust distance from the top
+              right: 50, // Position next to the delete button
+              child: GestureDetector(
+                onTap: () => _pickAndUploadImage('background'), // Change background image
+                child: const CircleAvatar(
+                  radius: 14, // Small circular button size
+                  backgroundColor: Colors.white,
+                  child: Icon(
+                    Icons.edit,
+                    size: 14, // Icon size
+                    color: Colors.black, // Icon color
+                  ),
+                ),
+              ),
+            ),
+        
+          // "Delete Background" button positioned in the top-right corner
+          Positioned(
+            top: 10, // Adjust distance from the top
+            right: 10, // Adjust distance from the right
+            child: GestureDetector(
+              onTap: () => _deleteBackgroundImage(), // Delete background image
+              child: const CircleAvatar(
+                radius: 14, // Small circular button size
+                backgroundColor: Colors.red, // Red background for delete button
+                child: Icon(
+                  Icons.delete, // Delete icon
+                  size: 14, // Icon size
+                  color: Colors.white, // Icon color
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        ),
+                Column(
                   children: [
                     Stack(
                       children: [
@@ -297,7 +391,7 @@ class _AccountInfoState extends State<AccountInfo> {
                           bottom: 0,
                           right: 0,
                           child: GestureDetector(
-                            onTap: _pickAndUploadImage,
+                            onTap: () => _pickAndUploadImage('profile'),
                             child: const CircleAvatar(
                               radius: 14,
                               backgroundColor: Colors.white,
@@ -333,16 +427,19 @@ class _AccountInfoState extends State<AccountInfo> {
                     const SizedBox(height: 5),
                     Text(
                       userData['address'] ?? 'Location Unknown',
-                      style: const TextStyle(color: Colors.grey, fontSize: 14),
+                      style: const TextStyle(color: Colors.black, fontSize: 14),
                     ),
                     const SizedBox(height: 5),
                     Text(
                       userData['bio'] ?? 'No bio added',
                       style: const TextStyle(color: Colors.black, fontSize: 16),
                     ),
-                  ],
-                ),
+                  const SizedBox(height: 20),
+                ],
               ),
+            ],
+            ),
+            ),
               const SizedBox(height: 20),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -423,28 +520,32 @@ class _AccountInfoState extends State<AccountInfo> {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    Text(
-                      'Listing',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      'Review',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                    Text(
-                      'About',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ],
+              Divider(color: Colors.grey[300], thickness: 1),
+              Expanded(
+                child: DefaultTabController(
+                  length: 3,
+                  child: Column(
+                    children: [
+                      const TabBar(
+                        tabs: [
+                          Tab(text: 'Listing'),
+                          Tab(text: 'Review'),
+                          Tab(text: 'About'),
+                        ],
+                      ),
+                      Expanded(
+                        child: TabBarView(
+                          children: [
+                            const AllProductPage(),
+                            const Center(child: Text('Reviews Section')), // Placeholder for Reviews
+                            const Center(child: Text('About Section')),   // Placeholder for About
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              Divider(color: Colors.grey[300], thickness: 1),
             ],
           );
         },

@@ -148,27 +148,6 @@ class _AllProductPageState extends State<AllProductPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-            appBar: AppBar(
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-              ),
-              title: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Icon(
-                    Icons.shopping_bag_outlined,
-                    color: Colors.black,
-                    size: 24,
-                  ),
-                  SizedBox(width: 8),
-                  Text('My Listing'),
-                ],
-              ),
-              centerTitle: true,
-            ),
             body: SafeArea(
               child: Column(
                 children: [
@@ -202,7 +181,7 @@ class _AllProductPageState extends State<AllProductPage> {
           });
         },
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 15),
+          padding: const EdgeInsets.symmetric(vertical: 10),
           margin: const EdgeInsets.symmetric(horizontal: 5),
           decoration: BoxDecoration(
             color: _selectedTabIndex == index
