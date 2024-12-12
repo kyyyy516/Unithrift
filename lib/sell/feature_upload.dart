@@ -12,16 +12,16 @@ import '../services/cloudinary_service.dart';
 import '../services/db_service.dart';
 
 
-class TestPage extends StatefulWidget {
+class UploadFeaturePage extends StatefulWidget {
   //const TestPage(this.noAppBar, {super.key});
   //final bool noAppBar;
-  const TestPage({super.key});
+  const UploadFeaturePage({super.key});
 
   @override
-  State<TestPage> createState() => _TestPageState();
+  State<UploadFeaturePage> createState() => _UploadFeaturePageState();
 }
 
-class _TestPageState extends State<TestPage> {
+class _UploadFeaturePageState extends State<UploadFeaturePage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
@@ -49,13 +49,9 @@ class _TestPageState extends State<TestPage> {
   final List<String> _categories = [
     'Books',
     'Clothes',
-    'Electronics',
     'Furniture',
-    'Mobile Phones & Gadgets',
-    'Beauty & Personal Care',
-    'Tickets',
-    'Stationary',
-    'Other'
+    'Electronics',
+    'Others'  // zx
   ];
   // Selected category
   String? _selectedCategory;

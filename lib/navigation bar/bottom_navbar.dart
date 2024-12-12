@@ -5,7 +5,7 @@ import 'package:unithrift/cart/cart.dart';
 import 'package:unithrift/homepage.dart';
 import 'package:unithrift/notification_page.dart';
 import 'package:unithrift/sell/account_test.dart';
-import 'package:unithrift/sell/product_test.dart';
+//import 'package:unithrift/sell/product_test.dart';
 //import 'package:unithrift/sell/try_upload.dart';
 //import 'package:unithrift/sell/upload_main.dart';
 import '../explore/explore.dart';
@@ -18,7 +18,7 @@ const List<Widget> pages = <Widget>[
   MainUploadPage(),
   Cart(true),
   //Text('Account Page'),
-  AccountInfo(),
+  AccountPage(),
 ];
 
 void commonNavigate(BuildContext context, int index) {
@@ -55,7 +55,7 @@ void commonNavigate(BuildContext context, int index) {
         context,
         MaterialPageRoute(
           builder: (context) =>
-              const AccountInfo(), // Replace with your account page;
+              const AccountPage(), // Replace with your account page;
         ),
       );
       break;

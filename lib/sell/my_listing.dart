@@ -231,7 +231,7 @@ class _AllProductPageState extends State<AllProductPage> {
         }
 
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text('Your cart is empty'));
+          return const Center(child: Text('No listing'));  // zx
         }
 
         // Group items by type and seller
@@ -291,7 +291,7 @@ class _AllProductPageState extends State<AllProductPage> {
           padding: const EdgeInsets.all(8),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            childAspectRatio: 0.75, // Adjust this value to control item height
+            childAspectRatio: 0.7, // Adjust this value to control item height
             crossAxisSpacing: 8,
             mainAxisSpacing: 8,
           ),
@@ -363,7 +363,7 @@ class _AllProductPageState extends State<AllProductPage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ListingDetailsPage(product: item),  // Show details when click 
+                  builder: (context) => ListingPage(product: item),  // Show details when click 
                 ),
               );
             }, 
@@ -373,7 +373,7 @@ class _AllProductPageState extends State<AllProductPage> {
               children: [
                 // Image container with fixed height
                 SizedBox(
-                  height: 120,
+                  height: 130, // Increased height for larger media display
                   width: double.infinity,
                   child: ClipRRect(
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
@@ -474,7 +474,7 @@ class _AllProductPageState extends State<AllProductPage> {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ListingDetailsPage(product: item),
+                  builder: (context) => ListingPage(product: item),
                 ),
               ),
               child: Container(

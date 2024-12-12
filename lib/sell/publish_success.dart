@@ -80,7 +80,7 @@ class _PublishSuccessfulPageState extends State<PublishSuccessfulPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ListingDetailsPage(
+                    builder: (context) => ListingPage(
                       product: docSnapshot.data()!,
                     ),
                   ),

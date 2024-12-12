@@ -27,6 +27,26 @@ class _EditProductPageState extends State<EditProductPage> {
   bool _isLoading = true;
   Map<String, dynamic>? _productData;
 
+  // Categories list
+  final List<String> _categories = [
+    'Books',
+    'Clothes',
+    'Furniture',
+    'Electronics',
+    'Others'  // zx
+  ];
+
+  // Condition
+  final List<String> _conditions = [
+    'New',
+    'Like New',
+    'Gently Used',
+    'Well-Worn',
+    'Repair'
+  ];
+
+
+
   late TextEditingController _nameController;
   late TextEditingController _priceController;
   late TextEditingController _detailsController;
@@ -50,6 +70,66 @@ class _EditProductPageState extends State<EditProductPage> {
     _detailsController = TextEditingController();
     _brandController = TextEditingController();
     _fetchProductData();
+  }
+
+  bool _validateDetails() {
+
+    // Name length validation
+    final name = _nameController.text.trim();
+    if (name.length < 3) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Item name must be at least 3 characters long.')),
+      );
+      return false;
+    }
+
+    if (name.length > 100) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Item name must be less than 100 characters.')),
+      );
+      return false;
+    }
+
+    // Details length validation
+    final details = _detailsController.text.trim();
+    if (details.isNotEmpty && details.length > 500) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Item details must be less than 500 characters.')),
+      );
+      return false;
+    }
+
+
+    // Price validation with more specific conditions
+    final price = double.tryParse(_priceController.text.trim());
+    if (price == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Invalid price. Please enter a valid number.')),
+      );
+      return false;
+    }
+
+    // Price range validation
+    if (price <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Price must be greater than 0.')),
+      );
+      return false;
+    }
+
+    if (price > 1000000) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Price is too high. Maximum price is 1,000,000.')),
+      );
+      return false;
+    }
+
+    return true;
   }
 
     Future<void> _fetchProductData() async {
@@ -92,7 +172,7 @@ class _EditProductPageState extends State<EditProductPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading product: $e')),
+          SnackBar(content: Text('Error loading item: $e')),
         );
         Navigator.pop(context);
       }
@@ -109,6 +189,10 @@ class _EditProductPageState extends State<EditProductPage> {
   }
 
   Future<void> _updateProduct() async {
+    if (!_validateDetails()) {
+        return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
 
     // Check if any changes were made
@@ -145,15 +229,15 @@ class _EditProductPageState extends State<EditProductPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Product updated successfully')),
+          const SnackBar(content: Text('Updated successfully')),
         );
-        Navigator.pop(context);
+        Navigator.pop(context, true); // Return true to indicate successful update
       }
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating product: $e')),
+          SnackBar(content: Text('Error updating item: $e')),
         );
       }
     }
@@ -174,6 +258,57 @@ class _EditProductPageState extends State<EditProductPage> {
             child: ListView(
               padding: const EdgeInsets.all(16.0),
               children: [
+                DropdownButtonFormField<String>(
+                  value: _category,
+                  iconEnabledColor: Color(0xFF808569), // Add this line to change arrow color
+                  decoration: const InputDecoration(
+                    labelText: 'Category',
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: Color(0xFF808569)),
+                    ),
+                    labelStyle: TextStyle(color: Colors.grey),
+                    floatingLabelStyle: TextStyle(color: Color(0xFF808569)),
+                  ),
+                  items: _categories.map((String category) {
+                    return DropdownMenuItem<String>(
+                      value: category,
+                      child: Text(category),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      _category = newValue ?? 'Uncategorized';
+                    });
+                  },
+                ),
+                const SizedBox(height: 20),
+
+                DropdownButtonFormField<String>(
+                  value: _condition,
+                  iconEnabledColor: Color(0xFF808569), 
+                  decoration: const InputDecoration(
+                    labelText: 'Condition',
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: Color(0xFF808569)),
+                    ),
+                    labelStyle: TextStyle(color: Colors.grey),
+                    floatingLabelStyle: TextStyle(color: Color(0xFF808569)),
+                  ),
+                  items: _conditions.map((String condition) {
+                    return DropdownMenuItem<String>(
+                      value: condition,
+                      child: Text(condition),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      _condition = newValue ?? 'Unknown';
+                    });
+                  },
+                ),
+
+                const SizedBox(height: 20),
+
                 TextFormField(
                   controller: _nameController,
                   cursorColor: Color(0xFF808569),
@@ -190,6 +325,8 @@ class _EditProductPageState extends State<EditProductPage> {
                   validator: (value) =>
                       value?.isEmpty ?? true ? 'Please enter a name' : null,
                 ),
+
+                const SizedBox(height: 20),
                 TextFormField(
                   controller: _priceController,
                   decoration: const InputDecoration(
@@ -204,6 +341,8 @@ class _EditProductPageState extends State<EditProductPage> {
                   validator: (value) =>
                       value?.isEmpty ?? true ? 'Please enter a price' : null,
                 ),
+
+                const SizedBox(height: 20),
                 TextFormField(
                   controller: _detailsController,
                   decoration: const InputDecoration(
@@ -218,6 +357,8 @@ class _EditProductPageState extends State<EditProductPage> {
                   ),
                   maxLines: 3,
                 ),
+
+                const SizedBox(height: 20),
                 TextFormField(
                   controller: _brandController,
                   decoration: const InputDecoration(
