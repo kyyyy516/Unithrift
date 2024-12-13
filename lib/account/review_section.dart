@@ -1,0 +1,189 @@
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+class ReviewsSection extends StatefulWidget {
+  const ReviewsSection({Key? key}) : super(key: key);
+
+  @override
+  _ReviewsSectionState createState() => _ReviewsSectionState();
+}
+
+class _ReviewsSectionState extends State<ReviewsSection> {
+  int _selectedTabIndex = 0;
+
+  Stream<QuerySnapshot> getReviewsStream() {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return const Stream.empty();
+
+    final reviewsCollection = FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('reviews');
+
+    if (_selectedTabIndex == 1) {
+      return reviewsCollection.where('role', isEqualTo: 'seller').snapshots();
+    } else if (_selectedTabIndex == 2) {
+      return reviewsCollection.where('role', isEqualTo: 'buyer').snapshots();
+    } else {
+      return reviewsCollection.snapshots();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Column(
+        children: [
+          _buildTabRow(),
+          const SizedBox(height: 10),
+          Expanded(child: _buildContentSection()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabRow() {
+    return Row(
+      children: [
+        _buildTab(0, 'All'),
+        _buildTab(1, 'Seller'),
+        _buildTab(2, 'Buyer'),
+      ],
+    );
+  }
+
+  Widget _buildTab(int index, String title) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedTabIndex = index;
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          margin: const EdgeInsets.symmetric(horizontal: 5),
+          decoration: BoxDecoration(
+            color: _selectedTabIndex == index
+                ? const Color(0xFFE5E8D9)
+                : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: _selectedTabIndex == index ? Colors.black : Colors.grey,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContentSection() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: getReviewsStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text("No reviews available."));
+        }
+
+        final reviews = snapshot.data!.docs;
+
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          itemCount: reviews.length,
+          itemBuilder: (context, index) {
+            final review = reviews[index].data() as Map<String, dynamic>;
+            return ReviewCard(review: review);
+          },
+        );
+      },
+    );
+  }
+}
+
+class ReviewCard extends StatelessWidget {
+  final Map<String, dynamic> review;
+
+  const ReviewCard({Key? key, required this.review}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                if (review['productImage'] != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      review['productImage'],
+                      height: 50,
+                      width: 50,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        review['productName'] ?? "Unknown Product",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        "Price: RM ${review['productPrice']?.toStringAsFixed(2) ?? 'N/A'}",
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.star, color: Colors.yellow, size: 18),
+                Text(
+                  "${review['rating'] ?? 'N/A'}",
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              review['reviewText'] ?? "No review text",
+              style: const TextStyle(fontSize: 14, color: Colors.black87),
+            ),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                "By ${review['reviewerName'] ?? 'Anonymous'} (${review['role']?.toUpperCase() ?? 'N/A'})",
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

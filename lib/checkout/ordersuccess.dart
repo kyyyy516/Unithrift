@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:unithrift/account/myorder.dart';
 
-
 class OrderSuccessPage extends StatefulWidget {
   final bool isMeetup;
   final double totalAmount;
@@ -23,120 +22,198 @@ class OrderSuccessPage extends StatefulWidget {
 class _OrderSuccessPageState extends State<OrderSuccessPage> {
   @override
   void initState() {
-    super.initState(); 
+    super.initState();
     _saveOrderAndClearCart();
   }
 
   Future<void> _saveOrderAndClearCart() async {
-  final user = FirebaseAuth.instance.currentUser;
-  if (user != null) {
-    for (var item in widget.cartItems) {
-      // Calculate the correct total amount based on item type
-      double itemTotal = calculateItemTotal(item);
-      
-      // Format the service date properly
-      String formattedServiceDate = '';
-      if (item['serviceDate'] != null) {
-        if (item['serviceDate'] is DateTime) {
-          DateTime date = item['serviceDate'];
-          formattedServiceDate = '${date.day}/${date.month}/${date.year}';
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      // Fetch buyer's name from Firestore
+      final buyerDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final buyerName = buyerDoc.data()?['username'] ?? 'Unknown Buyer';
+
+      for (var item in widget.cartItems) {
+        // Calculate total amount for the item
+        double itemTotal = calculateItemTotal(item);
+
+        // Prepare rental dates if applicable
+        String? startRentalDate;
+        String? endRentalDate;
+
+        if (item['type'] == 'rental') {
+          startRentalDate = item['startRentalDate'];
+          endRentalDate = item['endRentalDate'];
+
+          // Debug log to verify
+          print('Rental Dates: $startRentalDate to $endRentalDate');
+        }
+
+        // Prepare service date if applicable
+        String formattedServiceDate = '';
+        if (item['serviceDate'] != null) {
+          if (item['serviceDate'] is DateTime) {
+            DateTime date = item['serviceDate'];
+            formattedServiceDate = '${date.day}/${date.month}/${date.year}';
+          } else if (item['serviceDate'] is String) {
+            formattedServiceDate = item['serviceDate'];
+          }
+        }
+
+        // Create a unique orderId and trackingNo
+        String orderId = 'ORD${DateTime.now().millisecondsSinceEpoch}';
+        String trackingNo = 'TRK${DateTime.now().millisecondsSinceEpoch}';
+
+        // Prepare the order data
+        Map<String, dynamic> orderData = {
+          'orderId': orderId,
+          'trackingNo': trackingNo,
+          'productID': item['productID'] ?? '',
+          'name': item['name'] ?? 'Unknown Product',
+          'price': item['price'] ?? 0.0,
+          'quantity': item['quantity'] ?? 1,
+          'totalAmount': itemTotal,
+          'imageUrl': [item['imageUrl1'], item['imageUrl2'], item['imageUrl3']]
+              .firstWhere(
+            (url) =>
+                url != null &&
+                url.isNotEmpty &&
+                !url.toLowerCase().endsWith('.mp4'),
+            orElse: () => '',
+          ),
+          'imageUrl1': item['imageUrl1'] ?? '',
+          'imageUrl2': item['imageUrl2'] ?? '',
+          'imageUrl3': item['imageUrl3'] ?? '',
+          'condition': item['condition'] ?? 'Unknown',
+          'type': item['type'] ?? 'item',
+          'serviceDate': formattedServiceDate,
+          'startRentalDate': startRentalDate,
+          'endRentalDate': endRentalDate,
+          'orderDate': FieldValue.serverTimestamp(),
+          'status': 'Pending',
+          'isMeetup': widget.isMeetup,
+          'address': widget.isMeetup ? 'Meetup Address' : item['address'] ?? '',
+          'buyerId': user.uid,
+          'buyerName': buyerName,
+          'buyerEmail': user.email ?? 'No Email',
+          'sellerUserId': item['sellerUserId'] ?? '',
+          'sellerName': item['sellerName'] ?? 'Unknown Seller',
+          'sellerEmail': item['sellerEmail'] ?? '',
+          'timestamp': FieldValue.serverTimestamp(),
+        };
+
+        // Save to buyer's orders
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('orders')
+            .doc(orderId)
+            .set(orderData);
+
+        // Save to seller's sales
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(item['sellerUserId'])
+            .collection('sales')
+            .doc(orderId)
+            .set(orderData);
+
+        // Send notifications
+        await Future.wait([
+          _addNotification(
+            userId: user.uid,
+            title: "Order Placed",
+            message:
+                "Your order for ${item['name']} has been successfully placed.",
+            productImageUrl: item['imageUrl1'],
+            type: "track",
+          ),
+          _addNotification(
+            userId: item['sellerUserId'],
+            title: "New Sale",
+            message: "You have a new sale for ${item['name']}.",
+            productImageUrl: item['imageUrl1'],
+            type: "manage",
+          ),
+        ]);
+
+        // Remove from cart if it's not a direct buy
+        if (item['docId'] != 'direct-buy') {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('cart')
+              .doc(item['docId'])
+              .delete();
         }
       }
+    }
+  }
 
-      Map<String, dynamic> orderData = {
+  Future<void> _addNotification({
+    required String userId,
+    required String title,
+    required String message,
+    String? productImageUrl,
+    required String type,
+  }) async {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('notifications')
+        .add({
+      'title': title,
+      'message': message,
+      'timestamp': FieldValue.serverTimestamp(),
+      'isRead': false,
+      'productImageUrl': productImageUrl,
+      'type': type,
+    });
+  }
+
+  double calculateItemTotal(Map<String, dynamic> item) {
+    if (item['type'] == 'rental') {
+      final startDate = item['startRentalDate'].split('/');
+      final endDate = item['endRentalDate'].split('/');
+
+      DateTime start = DateTime(int.parse(startDate[2]),
+          int.parse(startDate[1]), int.parse(startDate[0]));
+      DateTime end = DateTime(
+          int.parse(endDate[2]), int.parse(endDate[1]), int.parse(endDate[0]));
+
+      int days = end.difference(start).inDays + 1;
+      return double.parse(item['price'].toString()) * days;
+    } else if (item['type'] == 'service') {
+      return double.parse(item['price'].toString()) * (item['quantity'] ?? 1);
+    }
+    return double.parse(item['price'].toString());
+  }
+
+  void addToOrders(List<Map<String, dynamic>> items, double totalAmount) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    for (var item in items) {
+      await FirebaseFirestore.instance.collection('orders').add({
         'userId': user.uid,
         'orderId': 'ORD${DateTime.now().millisecondsSinceEpoch}',
         'trackingNo': 'TRK${DateTime.now().millisecondsSinceEpoch}',
         'imageUrl': item['imageUrl1'],
         'name': item['name'],
-        'totalAmount': itemTotal,
+        'totalAmount': totalAmount,
         'status': 'processing',
-        'type': item['type'] ?? 'feature',
-        'condition': item['condition'] ?? '',
-        'serviceDate': formattedServiceDate,
-        'quantity': item['quantity'] ?? 1,
+        'type': item['type'] ?? 'item',
+        'condition': item['condition'],
+        'startDate': item['startRentalDate'],
+        'endDate': item['endRentalDate'],
+        'serviceDate': item['serviceDate'],
         'timestamp': FieldValue.serverTimestamp(),
-        'isMeetup': widget.isMeetup,
-        'sellerName': item['sellerName'],
-        'sellerUserId': item['sellerUserId'],
-      };
-
-      // Save to user's orders
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('orders')
-          .add(orderData);
-
-      // Save to seller's sales
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(item['sellerUserId'])
-          .collection('sales')
-          .add(orderData);
-
-      // Only delete from cart if it's not a direct buy
-      if (item['docId'] != 'direct-buy') {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .collection('cart')
-            .doc(item['docId'])
-            .delete();
-      }
+      });
     }
   }
-}
-
-
-double calculateItemTotal(Map<String, dynamic> item) {
-  if (item['type'] == 'rental') {
-    final startDate = item['startRentalDate'].split('/');
-    final endDate = item['endRentalDate'].split('/');
-    
-    DateTime start = DateTime(
-      int.parse(startDate[2]), 
-      int.parse(startDate[1]), 
-      int.parse(startDate[0])
-    );
-    DateTime end = DateTime(
-      int.parse(endDate[2]), 
-      int.parse(endDate[1]), 
-      int.parse(endDate[0])
-    );
-        
-    int days = end.difference(start).inDays + 1;
-    return double.parse(item['price'].toString()) * days;
-  } else if (item['type'] == 'service') {
-    return double.parse(item['price'].toString()) * (item['quantity'] ?? 1);
-  }
-  return double.parse(item['price'].toString());
-}
-
-
-
-void addToOrders(List<Map<String, dynamic>> items, double totalAmount) async {
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) return;
-
-  for (var item in items) {
-    await FirebaseFirestore.instance.collection('orders').add({
-      'userId': user.uid,
-      'orderId': 'ORD${DateTime.now().millisecondsSinceEpoch}',
-      'trackingNo': 'TRK${DateTime.now().millisecondsSinceEpoch}',
-      'imageUrl': item['imageUrl1'],
-      'name': item['name'],
-      'totalAmount': totalAmount,
-      'status': 'processing',
-      'type': item['type'] ?? 'item',
-      'condition': item['condition'],
-      'startDate': item['startRentalDate'],
-      'endDate': item['endRentalDate'],
-      'serviceDate': item['serviceDate'],
-      'timestamp': FieldValue.serverTimestamp(),
-    });
-  }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -175,31 +252,29 @@ void addToOrders(List<Map<String, dynamic>> items, double totalAmount) async {
               ),
               const SizedBox(height: 60),
               SizedBox(
-  width: double.infinity,
-  child: ElevatedButton(
-    onPressed: () {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) =>  MyOrders(),
-    ),
-  );
-},
-
-    style: ElevatedButton.styleFrom(
-      backgroundColor: const Color(0xFF808569),
-      padding: const EdgeInsets.symmetric(vertical: 15),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(25),
-      ),
-    ),
-    child: const Text(
-      'View Order',
-      style: TextStyle(color: Colors.white),
-    ),
-  ),
-),
-
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MyOrders(),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF808569),
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                  ),
+                  child: const Text(
+                    'View Order',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ),
               const SizedBox(height: 15),
               GestureDetector(
                 onTap: () {

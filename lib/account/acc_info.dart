@@ -12,6 +12,7 @@ import 'package:unithrift/account/showfavourite.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../sell/my_listing.dart';
+import 'package:unithrift/account/review_section.dart';
 
 class AccountInfo extends StatefulWidget {
   const AccountInfo({super.key});
@@ -306,251 +307,233 @@ class _AccountInfoState extends State<AccountInfo> {
           // Get the real-time user data from Firestore
           final userData = snapshot.data!.data() as Map<String, dynamic>;
 
-          return Column(
-            children: [
-              Container(
-                color: Colors.green[100],
-                child: Stack(
-                  children: [
-                    // The background section
-                    Container(
-                      height: 200, // Match the green area size
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        image: userData['backgroundImage'] != null
-                            ? DecorationImage(
-                                image:
-                                    NetworkImage(userData['backgroundImage']),
-                                fit: BoxFit
-                                    .cover, // Ensures the image covers the entire container
-                              )
-                            : null,
-                        color: Colors.green[
-                            100], // Fallback green color if no image is set
-                      ),
-                      child: Stack(
-                        children: [
-                          // "Change Background" button positioned in the top-right corner
-                          Positioned(
-                            top: 10, // Adjust distance from the top
-                            right: 50, // Position next to the delete button
-                            child: GestureDetector(
-                              onTap: () => _pickAndUploadImage(
-                                  'background'), // Change background image
-                              child: const CircleAvatar(
-                                radius: 14, // Small circular button size
-                                backgroundColor: Colors.white,
-                                child: Icon(
-                                  Icons.edit,
-                                  size: 14, // Icon size
-                                  color: Colors.black, // Icon color
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          // "Delete Background" button positioned in the top-right corner
-                          Positioned(
-                            top: 10, // Adjust distance from the top
-                            right: 10, // Adjust distance from the right
-                            child: GestureDetector(
-                              onTap: () =>
-                                  _deleteBackgroundImage(), // Delete background image
-                              child: const CircleAvatar(
-                                radius: 14, // Small circular button size
-                                backgroundColor: Colors
-                                    .red, // Red background for delete button
-                                child: Icon(
-                                  Icons.delete, // Delete icon
-                                  size: 14, // Icon size
-                                  color: Colors.white, // Icon color
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Column(
-                      children: [
-                        Stack(
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                // Top Section with Background and Profile
+                Container(
+                  color: Colors.green[100],
+                  child: Stack(
+                    children: [
+                      // Background image
+                      Container(
+                        height: 200,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          image: userData['backgroundImage'] != null
+                              ? DecorationImage(
+                                  image:
+                                      NetworkImage(userData['backgroundImage']),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                          color: Colors.green[100],
+                        ),
+                        child: Stack(
                           children: [
-                            GestureDetector(
-                              onTap: () {
-                                if (userData['profileImage'] != null) {
-                                  _showFullScreenImage(
-                                      userData['profileImage']);
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content:
-                                          Text('No profile picture to display'),
-                                    ),
-                                  );
-                                }
-                              },
-                              child: CircleAvatar(
-                                radius: 40,
-                                backgroundImage:
-                                    userData['profileImage'] != null
-                                        ? NetworkImage(userData['profileImage'])
-                                        : const AssetImage('assets/profile.png')
-                                            as ImageProvider,
-                              ),
-                            ),
+                            // Edit Background
                             Positioned(
-                              bottom: 0,
-                              right: 0,
+                              top: 10,
+                              right: 50,
                               child: GestureDetector(
-                                onTap: () => _pickAndUploadImage('profile'),
+                                onTap: () => _pickAndUploadImage('background'),
                                 child: const CircleAvatar(
                                   radius: 14,
                                   backgroundColor: Colors.white,
-                                  child: Icon(
-                                    Icons.edit,
-                                    size: 16,
-                                    color: Colors.black,
-                                  ),
+                                  child: Icon(Icons.edit,
+                                      size: 14, color: Colors.black),
+                                ),
+                              ),
+                            ),
+                            // Delete Background
+                            Positioned(
+                              top: 10,
+                              right: 10,
+                              child: GestureDetector(
+                                onTap: () => _deleteBackgroundImage(),
+                                child: const CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor: Colors.red,
+                                  child: Icon(Icons.delete,
+                                      size: 14, color: Colors.white),
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 10),
-                        Text(
-                          userData['username'] ?? 'User Name',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                      ),
+                      Column(
+                        children: [
+                          Stack(
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  if (userData['profileImage'] != null) {
+                                    _showFullScreenImage(
+                                        userData['profileImage']);
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              'No profile picture to display')),
+                                    );
+                                  }
+                                },
+                                child: CircleAvatar(
+                                  radius: 40,
+                                  backgroundImage: userData['profileImage'] !=
+                                          null
+                                      ? NetworkImage(userData['profileImage'])
+                                      : const AssetImage('assets/profile.png')
+                                          as ImageProvider,
+                                ),
+                              ),
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: GestureDetector(
+                                  onTap: () => _pickAndUploadImage('profile'),
+                                  child: const CircleAvatar(
+                                    radius: 14,
+                                    backgroundColor: Colors.white,
+                                    child: Icon(Icons.edit,
+                                        size: 16, color: Colors.black),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.star,
-                                color: Colors.yellow, size: 18),
-                            const SizedBox(width: 4),
-                            Text(
-                              userData['rating']?.toString() ?? '0.0',
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          userData['address'] ?? 'Location Unknown',
-                          style: const TextStyle(
-                              color: Colors.black, fontSize: 14),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          userData['bio'] ?? 'No bio added',
-                          style: const TextStyle(
-                              color: Colors.black, fontSize: 16),
-                        ),
-                        const SizedBox(height: 20),
-                      ],
-                    ),
-                  ],
+                          const SizedBox(height: 10),
+                          Text(
+                            userData['username'] ?? 'User Name',
+                            style: const TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.star,
+                                  color: Colors.yellow, size: 18),
+                              const SizedBox(width: 4),
+                              Text(
+                                (userData['rating'] ?? 0.0).toStringAsFixed(2),
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            userData['address'] ?? 'Location Unknown',
+                            style: const TextStyle(
+                                color: Colors.black, fontSize: 14),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            userData['bio'] ?? 'No bio added',
+                            style: const TextStyle(
+                                color: Colors.black, fontSize: 16),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFE5E8D9),
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                const SizedBox(height: 20),
+                // Buttons Section
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFE5E8D9),
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => MyOrders()),
+                            );
+                          },
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.shopping_bag_outlined),
+                              SizedBox(width: 8),
+                              Text('My Order'),
+                            ],
                           ),
                         ),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => MyOrders(),
-                            ),
-                          );
-                        },
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.shopping_bag_outlined),
-                            SizedBox(width: 8),
-                            Text('My Order'),
-                          ],
-                        ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFE5E8D9),
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFE5E8D9),
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const ShowFavorites()),
+                            );
+                          },
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.favorite_border_outlined),
+                              SizedBox(width: 8),
+                              Text('My Likes'),
+                            ],
                           ),
                         ),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ShowFavorites(),
-                            ),
-                          );
-                        },
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.favorite_border_outlined),
-                            SizedBox(width: 8),
-                            Text('My Likes'),
-                          ],
-                        ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFE5E8D9),
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFE5E8D9),
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const MySalesPage()),
+                            );
+                          },
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.storefront),
+                              SizedBox(width: 8),
+                              Text('My Sales'),
+                            ],
                           ),
                         ),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const MySalesPage(),
-                            ),
-                          );
-                        },
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.storefront),
-                            SizedBox(width: 8),
-                            Text('My Sales'),
-                          ],
-                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              Divider(color: Colors.grey[300], thickness: 1),
-              Expanded(
-                child: DefaultTabController(
+                const Divider(color: Colors.grey, thickness: 1),
+                // Tab Section
+                DefaultTabController(
                   length: 3,
                   child: Column(
                     children: [
@@ -561,24 +544,21 @@ class _AccountInfoState extends State<AccountInfo> {
                           Tab(text: 'About'),
                         ],
                       ),
-                      Expanded(
+                      SizedBox(
+                        height: 500, // Limit height for scrolling
                         child: TabBarView(
                           children: [
                             const AllProductPage(),
-                            const Center(
-                                child: Text(
-                                    'Reviews Section')), // Placeholder for Reviews
-                            const Center(
-                                child: Text(
-                                    'About Section')), // Placeholder for About
+                            const ReviewsSection(),
+                            const Center(child: Text('About Section')),
                           ],
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       ),

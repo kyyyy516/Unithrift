@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:unithrift/account/OrderDetailsPage.dart';
 import 'package:unithrift/chatscreen.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 
@@ -13,7 +14,8 @@ class MySalesPage extends StatefulWidget {
 }
 
 class _MySalesPageState extends State<MySalesPage> {
-  int _selectedTabIndex = 0;
+  int _selectedTabIndex = 0; // For Items, Rentals, Services
+  int _selectedStatusIndex = 0; // For Processing, Completed, Cancelled
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -56,7 +58,7 @@ class _MySalesPageState extends State<MySalesPage> {
 
       final sellerId = currentUser.uid;
 
-      // Update order status in Firestore
+      // Prepare data for update
       final Map<String, dynamic> updateData = {'status': status};
 
       if (status == 'Meeting Scheduled') {
@@ -74,7 +76,21 @@ class _MySalesPageState extends State<MySalesPage> {
           .doc(orderId)
           .update(updateData);
 
-      // Fetch the order details from Firestore
+      // Log the status change in the seller's statusHistory subcollection
+      await _db
+          .collection('users')
+          .doc(sellerId)
+          .collection('sales')
+          .doc(orderId)
+          .collection('statusHistory')
+          .add({
+        'status': status,
+        'timestamp': FieldValue.serverTimestamp(),
+        if (status == 'Meeting Scheduled')
+          'details': {'location': location, 'time': time},
+      });
+
+      // Fetch the order details
       final orderSnapshot = await _db
           .collection('users')
           .doc(sellerId)
@@ -98,23 +114,52 @@ class _MySalesPageState extends State<MySalesPage> {
             .doc(orderId)
             .update(updateData);
 
-        // Notify buyer of status update
-        await _addNotification(
-          userId: buyerId,
-          title: 'Order Status Updated',
-          message: 'Your order status has been updated to "$status".',
-          productImageUrl: orderData['imageUrl1'],
-          type: 'track',
-        );
+        // Log the status change in buyer's statusHistory subcollection
+        await _db
+            .collection('users')
+            .doc(buyerId)
+            .collection('orders')
+            .doc(orderId)
+            .collection('statusHistory')
+            .add({
+          'status': status,
+          'timestamp': FieldValue.serverTimestamp(),
+          if (status == 'Meeting Scheduled')
+            'details': {'location': location, 'time': time},
+        });
 
-        // If the order is completed, prompt for a review
+        // Send specific notifications
+        if (status == 'Meeting Scheduled') {
+          await _addNotification(
+            userId: buyerId,
+            title: 'Meeting Scheduled',
+            message:
+                'The seller has scheduled a meetup for your order at $location on $time.',
+            productImageUrl: orderData['imageUrl1'],
+            type: 'track',
+            meetingDetails: {
+              'location': location,
+              'time': time,
+            },
+          );
+        } else {
+          await _addNotification(
+            userId: buyerId,
+            title: 'Order Status Updated',
+            message: 'Your order status has been updated to "$status".',
+            productImageUrl: orderData['imageUrl1'],
+            type: 'track',
+          );
+        }
+
+        // Prompt for review if status is Completed
         if (status == 'Completed') {
           _promptForReview(
             orderId,
             sellerId,
             buyerId,
             {
-              'productId': orderData['productID'], // Ensure correct field names
+              'productId': orderData['productID'],
               'productName': orderData['name'],
               'productImage': orderData['imageUrl1'],
               'productPrice': orderData['price'],
@@ -123,6 +168,7 @@ class _MySalesPageState extends State<MySalesPage> {
         }
       }
     } catch (e) {
+      // Error Handling
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error updating status: $e')),
       );
@@ -267,16 +313,22 @@ class _MySalesPageState extends State<MySalesPage> {
     required String userId,
     required String title,
     required String message,
-    String? productImageUrl, // Optional parameter for product image URL
-    required String type, // Add type to categorize notifications
+    String? productImageUrl,
+    required String type,
+    Map<String, dynamic>?
+        meetingDetails, // Add optional parameter for meeting details
   }) async {
+    final notificationMessage = meetingDetails != null
+        ? '$message Location: ${meetingDetails['location'] ?? 'Not set'}, Date & Time: ${meetingDetails['time'] ?? 'Not set'}.'
+        : message;
+
     await _db.collection('users').doc(userId).collection('notifications').add({
       'title': title,
-      'message': message,
+      'message': notificationMessage,
       'timestamp': FieldValue.serverTimestamp(),
       'isRead': false,
-      'productImageUrl': productImageUrl, // Add product image URL
-      'type': type, // Specify notification type
+      'productImageUrl': productImageUrl,
+      'type': type,
     });
   }
 
@@ -462,15 +514,26 @@ class _MySalesPageState extends State<MySalesPage> {
         : '$userId2\_$userId1';
   }
 
+  void _navigateToDetails(Map<String, dynamic> sale) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OrderDetailsPage(sale: sale),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.storefront, color: Colors.black),
-            SizedBox(width: 8),
+        centerTitle: true, // Ensure the title group is centered
+        title: Row(
+          mainAxisSize:
+              MainAxisSize.min, // Minimize space to just fit the content
+          children: const [
+            Icon(Icons.storefront_outlined, color: Colors.black),
+            SizedBox(width: 8), // Spacing between icon and text
             Text(
               "My Sales",
               style: TextStyle(
@@ -485,10 +548,107 @@ class _MySalesPageState extends State<MySalesPage> {
       ),
       body: Column(
         children: [
-          _buildTabRow(),
-          const SizedBox(height: 10),
-          Expanded(child: _buildContentSection()),
+          _buildTypesTabs(),
+          const SizedBox(height: 7), // Spacing between tabs and status
+          _buildStatusTabs(),
+          Expanded(
+            child: _buildContentSection(), // Replace with your sales content
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTypesTabs() {
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: Colors.grey, width: 0.5),
+        ),
+      ),
+      child: Row(
+        children: [
+          _buildTab(0, 'Items'),
+          _buildTab(1, 'Rentals'),
+          _buildTab(2, 'Services'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTab(int index, String title) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedTabIndex = index;
+            _selectedStatusIndex =
+                0; // Reset to 'Processing' when switching tabs
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 15),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: _selectedTabIndex == index
+                    ? const Color(0xFF808569)
+                    : Colors.transparent,
+                width: 3,
+              ),
+            ),
+          ),
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: _selectedTabIndex == index
+                  ? const Color(0xFF808569)
+                  : Colors.grey,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusTabs() {
+    return Row(
+      children: [
+        _buildStatusTab(0, 'Processing'),
+        _buildStatusTab(1, 'Completed'),
+        _buildStatusTab(2, 'Cancelled'),
+      ],
+    );
+  }
+
+  Widget _buildStatusTab(int index, String title) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedStatusIndex = index;
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          margin: const EdgeInsets.all(5),
+          decoration: BoxDecoration(
+            color: _selectedStatusIndex == index
+                ? const Color(0xFFE5E8D9)
+                : Colors.white,
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: _selectedStatusIndex == index ? Colors.black : Colors.grey,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -500,36 +660,6 @@ class _MySalesPageState extends State<MySalesPage> {
         _buildTab(1, 'Ongoing'),
         _buildTab(2, 'Completed'),
       ],
-    );
-  }
-
-  Widget _buildTab(int index, String title) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedTabIndex = index;
-          });
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 15),
-          margin: const EdgeInsets.symmetric(horizontal: 5),
-          decoration: BoxDecoration(
-            color: _selectedTabIndex == index
-                ? const Color(0xFFE5E8D9)
-                : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: _selectedTabIndex == index ? Colors.black : Colors.grey,
-            ),
-          ),
-        ),
-      ),
     );
   }
 
@@ -550,21 +680,57 @@ class _MySalesPageState extends State<MySalesPage> {
           );
         }
 
-        // Filter data by selected tab
-        List<Map<String, dynamic>> filteredData;
+        // Filter data by selected tab (Items, Rentals, Services)
+        List<Map<String, dynamic>> filteredByType;
         switch (_selectedTabIndex) {
-          case 1:
-            filteredData = snapshot.data!
-                .where((sale) => sale['status'] != 'Completed')
+          case 0: // feature
+            filteredByType = snapshot.data!
+                .where((sale) => sale['type'] == 'feature')
                 .toList();
             break;
-          case 2:
-            filteredData = snapshot.data!
-                .where((sale) => sale['status'] == 'Completed')
+          case 1: // Rentals
+            filteredByType = snapshot.data!
+                .where((sale) => sale['type'] == 'rental')
                 .toList();
             break;
-          default:
-            filteredData = snapshot.data!;
+          case 2: // Services
+            filteredByType = snapshot.data!
+                .where((sale) => sale['type'] == 'service')
+                .toList();
+            break;
+          default: // Items
+            filteredByType =
+                snapshot.data!.where((sale) => sale['type'] == 'item').toList();
+        }
+
+        // Further filter by status (Processing, Completed, Cancelled)
+        List<Map<String, dynamic>> filteredData;
+        switch (_selectedStatusIndex) {
+          case 1: // Completed
+            filteredData = filteredByType
+                .where((sale) => sale['status']?.toLowerCase() == 'completed')
+                .toList();
+            break;
+          case 2: // Cancelled
+            filteredData = filteredByType
+                .where((sale) => sale['status']?.toLowerCase() == 'cancelled')
+                .toList();
+            break;
+          default: // Processing
+            filteredData = filteredByType
+                .where((sale) =>
+                    sale['status']?.toLowerCase() != 'completed' &&
+                    sale['status']?.toLowerCase() != 'cancelled')
+                .toList();
+        }
+
+        if (filteredData.isEmpty) {
+          return const Center(
+            child: Text(
+              'No matching sales found.',
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+          );
         }
 
         return ListView.builder(
@@ -580,180 +746,207 @@ class _MySalesPageState extends State<MySalesPage> {
   }
 
   Widget _buildSalesCard(Map<String, dynamic> sale) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-      padding: const EdgeInsets.all(15), // Increased padding for the container
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            spreadRadius: 1,
-            blurRadius: 3,
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Buyer Section
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                radius: 20, // Slightly larger for better visibility
-                backgroundImage: sale['buyerProfileImage'] != null
-                    ? NetworkImage(sale['buyerProfileImage'])
-                    : null,
-                backgroundColor: const Color(0xFF808569),
-                child: sale['buyerProfileImage'] == null
-                    ? Text(
-                        sale['buyerName']?.substring(0, 1).toUpperCase() ?? 'B',
-                        style: const TextStyle(color: Colors.white),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 15), // Increased spacing
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      sale['buyerName'] ?? 'Unknown Buyer',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    if (sale['buyerEmail'] != null)
-                      Text(
-                        sale['buyerEmail'],
-                        style:
-                            const TextStyle(color: Colors.grey, fontSize: 14),
-                      ),
-                  ],
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.chat_outlined),
-                onPressed: () => _navigateToChat(sale),
-              ),
-            ],
-          ),
-          const SizedBox(height: 15), // Space between sections
+    // Safely handle potential null values
+    final orderDate = sale['orderDate'] != null
+        ? (sale['orderDate'] as Timestamp).toDate()
+        : null;
 
-          // Product Section
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  sale['imageUrl1'] ?? 'https://via.placeholder.com/100',
-                  width: 80,
-                  height: 80,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const Icon(Icons.image_not_supported, size: 50),
-                ),
-              ),
-              const SizedBox(width: 15), // Increased spacing
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      sale['name'] ?? 'Unknown Product',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 5), // Space between product details
-                    Text(
-                      'RM ${sale['price']?.toStringAsFixed(2) ?? '0.00'}',
-                      style: const TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 5), // Space between product details
-                    if (sale['orderId'] != null)
-                      Text(
-                        'Order ID: ${sale['orderId']}',
-                        style:
-                            const TextStyle(color: Colors.grey, fontSize: 12),
-                      ),
-                    if (sale['orderDate'] != null)
-                      Text(
-                        'Order Date: ${DateFormat.yMMMd().format((sale['orderDate'] as Timestamp).toDate())}',
-                        style:
-                            const TextStyle(color: Colors.grey, fontSize: 12),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 15), // Space between sections
-
-          // Meeting Details Section
-          if (sale['status'] == 'Meeting Scheduled' &&
-              sale['meetingDetails'] != null)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return GestureDetector(
+      onTap: () => _navigateToDetails(sale), // Navigate to the detailed view
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.2),
+              spreadRadius: 1,
+              blurRadius: 3,
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Buyer Section
+            Row(
               children: [
-                const Divider(), // Divider for better visual separation
-                const Text(
-                  'Meeting Details:',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                CircleAvatar(
+                  radius: 20,
+                  backgroundImage: sale['buyerProfileImage'] != null
+                      ? NetworkImage(sale['buyerProfileImage'])
+                      : null,
+                  backgroundColor: const Color(0xFF808569),
+                  child: sale['buyerProfileImage'] == null
+                      ? Text(
+                          sale['buyerName']?.substring(0, 1).toUpperCase() ??
+                              'B',
+                          style: const TextStyle(color: Colors.white),
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        sale['buyerName'] ?? 'Unknown Buyer',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      if (sale['buyerEmail'] != null)
+                        Text(
+                          sale['buyerEmail'],
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 14,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 5), // Space between title and details
-                Text(
-                  'Location: ${sale['meetingDetails']['location']}',
-                  style: const TextStyle(fontSize: 12),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  'Date & Time: ${sale['meetingDetails']['time']}',
-                  style: const TextStyle(fontSize: 12),
+                IconButton(
+                  icon: const Icon(Icons.chat_outlined),
+                  onPressed: () => _navigateToChat(sale),
                 ),
               ],
             ),
-          const SizedBox(height: 15), // Space between sections
+            const SizedBox(height: 15),
 
-          // Order Status Section
-          DropdownButtonFormField<String>(
-            value: sale['status'],
-            decoration: const InputDecoration(
-              labelText: 'Order Status',
-              border: OutlineInputBorder(),
+            // Product Section
+            Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    sale['imageUrl1'] ?? 'https://via.placeholder.com/100',
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        sale['name'] ?? 'Unknown Product',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        'RM ${sale['totalAmount']?.toStringAsFixed(2) ?? '0.00'}',
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        'Order ID: ${sale['orderId'] ?? 'Not available'}',
+                        style:
+                            const TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                      Text(
+                        orderDate != null
+                            ? 'Order Date: ${DateFormat.yMMMd().format(orderDate)}'
+                            : 'Order Date: Not available',
+                        style:
+                            const TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            items: const [
-              DropdownMenuItem(value: 'Pending', child: Text('Pending')),
-              DropdownMenuItem(value: 'Shipped', child: Text('Shipped')),
-              DropdownMenuItem(
-                  value: 'Meeting Scheduled', child: Text('Meeting Scheduled')),
-              DropdownMenuItem(value: 'Confirmed', child: Text('Confirmed')),
-              DropdownMenuItem(
-                  value: 'In Progress', child: Text('In Progress')),
-              DropdownMenuItem(value: 'Completed', child: Text('Completed')),
-              DropdownMenuItem(value: 'Cancelled', child: Text('Cancelled')),
-            ],
-            onChanged: (value) {
-              if (value == 'Meeting Scheduled') {
-                _showMeetingDetailsDialog(sale['orderId']);
-              } else {
-                _updateOrderStatus(sale['orderId'], value!);
-              }
-            },
-          ),
-        ],
+            const SizedBox(height: 15),
+
+            // Conditional Section for Meetup or Delivery
+            if (sale['isMeetup'] == true)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Meetup Details:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  Text(
+                    'Location: ${sale['meetingDetails']?['location'] ?? 'Not set'}',
+                  ),
+                  Text(
+                    'Date & Time: ${sale['meetingDetails']?['time'] ?? 'Not set'}',
+                  ),
+                ],
+              )
+            else if (sale['status'] == 'Shipped')
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Delivery Status:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  Text('Tracking Number: ${sale['trackingNo'] ?? 'Not set'}'),
+                ],
+              ),
+            const SizedBox(height: 15),
+
+            // Order Status Section
+            DropdownButtonFormField<String>(
+              value: sale['status'],
+              decoration: const InputDecoration(
+                labelText: 'Order Status',
+                border: OutlineInputBorder(),
+              ),
+              items: sale['isMeetup'] == true
+                  ? const [
+                      DropdownMenuItem(
+                          value: 'Pending', child: Text('Pending')),
+                      DropdownMenuItem(
+                          value: 'Meeting Scheduled',
+                          child: Text('Meeting Scheduled')),
+                      DropdownMenuItem(
+                          value: 'In Progress', child: Text('In Progress')),
+                      DropdownMenuItem(
+                          value: 'Completed', child: Text('Completed')),
+                      DropdownMenuItem(
+                          value: 'Cancelled', child: Text('Cancelled')),
+                    ]
+                  : const [
+                      DropdownMenuItem(
+                          value: 'Pending', child: Text('Pending')),
+                      DropdownMenuItem(
+                          value: 'Shipped', child: Text('Shipped')),
+                      DropdownMenuItem(
+                          value: 'Out for Delivery',
+                          child: Text('Out for Delivery')),
+                      DropdownMenuItem(
+                          value: 'Delivered', child: Text('Delivered')),
+                      DropdownMenuItem(
+                          value: 'Completed', child: Text('Completed')),
+                      DropdownMenuItem(
+                          value: 'Cancelled', child: Text('Cancelled')),
+                    ],
+              onChanged: (value) {
+                if (value == 'Meeting Scheduled' && sale['isMeetup'] == true) {
+                  _showMeetingDetailsDialog(sale['orderId']);
+                } else {
+                  _updateOrderStatus(sale['orderId'], value!);
+                }
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

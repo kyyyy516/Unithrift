@@ -55,8 +55,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   Future<void> _handlePayment() async {
+    // Validate address for delivery
+    if (selectedDealMethod == 'delivery' &&
+        addressController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a delivery address')),
+      );
+      return;
+    }
+
     if (selectedPaymentMethod == 'fpx') {
-      // FPX flow
+      // FPX payment flow
       await Navigator.push(
         context,
         MaterialPageRoute(
@@ -77,24 +86,61 @@ class _CheckoutPageState extends State<CheckoutPage> {
         final user = FirebaseAuth.instance.currentUser;
 
         for (var item in widget.cartItems) {
-          await FirebaseFirestore.instance.collection('orders').add({
-            'userId': user?.uid,
+          final orderRef =
+              FirebaseFirestore.instance.collection('orders').doc();
+
+          // Fetch buyer's details
+          final buyerDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user?.uid)
+              .get();
+          final buyerData = buyerDoc.data() ?? {};
+
+          // Prepare order data
+          final orderData = {
             'orderId': 'ORD${DateTime.now().millisecondsSinceEpoch}',
             'trackingNo': 'TRK${DateTime.now().millisecondsSinceEpoch}',
-            'imageUrl': item['imageUrl1'],
+            'productID': item['productID'],
             'name': item['name'],
-            'totalAmount': finalTotal,
-            'status': 'processing',
-            'type': item['type'] ?? 'item',
+            'price': item['price'],
+            'quantity': item['quantity'] ?? 1,
+            'totalAmount': item['price'] * (item['quantity'] ?? 1),
+            'imageUrl1': item['imageUrl1'],
             'condition': item['condition'],
-            'startDate': item['startRentalDate'],
-            'endDate': item['endRentalDate'],
-            'serviceDate': item['serviceDate'],
-            'timestamp': FieldValue.serverTimestamp(),
+            'type': item['type'] ?? 'item',
+            'serviceDate': item['serviceDate'] ?? '',
+            'orderDate': FieldValue.serverTimestamp(),
+            'status': 'Processing',
             'isMeetup': selectedDealMethod == 'meetup',
-            'sellerName': widget.sellerName,
-            'address': addressController.text,
-          });
+            'address': selectedDealMethod == 'delivery'
+                ? addressController.text
+                : 'Meetup Address',
+            'buyerId': user?.uid,
+            'buyerName': buyerData['username'] ?? 'Unknown Buyer',
+            'buyerEmail': buyerData['email'] ?? 'No Email',
+            'sellerUserId': item['sellerUserId'],
+            'sellerName': item['sellerName'],
+            'sellerEmail': item['sellerEmail'],
+            'timestamp': FieldValue.serverTimestamp(),
+          };
+
+          await Future.wait([
+            // Save to buyer's orders subcollection
+            FirebaseFirestore.instance
+                .collection('users')
+                .doc(user?.uid)
+                .collection('orders')
+                .doc(orderRef.id)
+                .set(orderData),
+
+            // Save to seller's sales subcollection
+            FirebaseFirestore.instance
+                .collection('users')
+                .doc(item['sellerUserId'])
+                .collection('sales')
+                .doc(orderRef.id)
+                .set(orderData),
+          ]);
 
           // Clear item from cart
           await FirebaseFirestore.instance
@@ -105,26 +151,41 @@ class _CheckoutPageState extends State<CheckoutPage> {
               .delete();
         }
 
+        // Navigate to success page
         await Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (context) => OrderSuccessPage(
               isMeetup: selectedDealMethod == 'meetup',
               totalAmount: finalTotal,
-              cartItems: widget.cartItems,
+              cartItems: widget.cartItems.map((item) {
+                return {
+                  ...item,
+                  'address': selectedDealMethod == 'delivery'
+                      ? addressController.text
+                      : 'Meetup Address',
+                };
+              }).toList(),
             ),
           ),
         );
       }
     } else {
-      // Other payment methods
+      // Handle other payment methods
       await Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (context) => OrderSuccessPage(
             isMeetup: selectedDealMethod == 'meetup',
             totalAmount: finalTotal,
-            cartItems: widget.cartItems, // Pass the current cart items directly
+            cartItems: widget.cartItems.map((item) {
+              return {
+                ...item,
+                'address': selectedDealMethod == 'delivery'
+                    ? addressController.text
+                    : 'Meetup Address',
+              };
+            }).toList(),
           ),
         ),
       );
@@ -139,26 +200,25 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   Future<void> saveOrderAndSale(Map<String, dynamic> orderData) async {
-  final user = FirebaseAuth.instance.currentUser;
-  final orderId = 'ORD${DateTime.now().millisecondsSinceEpoch}';
-  
-  // Save to user's orders
-  await FirebaseFirestore.instance
-      .collection('users')
-      .doc(user?.uid)
-      .collection('orders')
-      .doc(orderId)
-      .set(orderData);
-      
-  // Save to seller's sales
-  await FirebaseFirestore.instance
-      .collection('users')
-      .doc(orderData['sellerUserId'])
-      .collection('sales')
-      .doc(orderId)
-      .set(orderData);
-}
+    final user = FirebaseAuth.instance.currentUser;
+    final orderId = 'ORD${DateTime.now().millisecondsSinceEpoch}';
 
+    // Save to user's orders
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user?.uid)
+        .collection('orders')
+        .doc(orderId)
+        .set(orderData);
+
+    // Save to seller's sales
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(orderData['sellerUserId'])
+        .collection('sales')
+        .doc(orderId)
+        .set(orderData);
+  }
 
   Future<List<Map<String, dynamic>>> _getCartItems() async {
     final user = FirebaseAuth.instance.currentUser;

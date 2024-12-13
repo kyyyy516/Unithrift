@@ -39,7 +39,77 @@ class _ItemServicePageState extends State<ItemServicePage> {
     super.initState();
     _fetchRatings();
     _initializeVideo();
+    _initializeMediaContent();
     fetchGlobalSellerRatings();
+  }
+
+  Future<void> _initializeMediaContent() async {
+    // Reset state
+    setState(() {
+      _isVideo = false;
+      _videoController = null;
+      _chewieController = null;
+    });
+    // Find video URL if exists
+    String? videoUrl = _findFirstVideoUrl();
+    if (videoUrl != null) {
+      setState(() => _isVideo = true);
+      try {
+        _videoController = VideoPlayerController.network(videoUrl);
+        await _videoController!.initialize();
+        if (mounted) {
+          setState(() {
+            _chewieController = ChewieController(
+              videoPlayerController: _videoController!,
+              autoPlay: false,
+              looping: false,
+              showControls: true,
+              aspectRatio: _videoController!.value.aspectRatio,
+              placeholder: const Center(child: CircularProgressIndicator()),
+              errorBuilder: (context, errorMessage) {
+                return Center(
+                  child: Text(errorMessage,
+                      style: const TextStyle(color: Colors.white)),
+                );
+              },
+            );
+          });
+        }
+      } catch (e) {
+        print('Video initialization error: $e');
+        setState(() => _isVideo = false);
+      }
+    }
+  }
+
+  String? _findFirstVideoUrl() {
+    final urls = [
+      widget.product['imageUrl1'],
+      widget.product['imageUrl2'],
+      widget.product['imageUrl3']
+    ];
+    return urls.firstWhere(
+      (url) => url != null && url.toString().toLowerCase().endsWith('.mp4'),
+      orElse: () => null,
+    );
+  }
+
+  List<String> _getImageUrls() {
+    List<String> images = [];
+    final urls = [
+      widget.product['imageUrl1'],
+      widget.product['imageUrl2'],
+      widget.product['imageUrl3']
+    ];
+    for (String? url in urls) {
+      if (url != null &&
+          url.isNotEmpty &&
+          !url.toString().toLowerCase().endsWith('.mp4') &&
+          url != 'https://via.placeholder.com/50') {
+        images.add(url);
+      }
+    }
+    return images;
   }
 
   Future<void> fetchGlobalSellerRatings() async {
@@ -355,7 +425,8 @@ class _ItemServicePageState extends State<ItemServicePage> {
                                 'serviceDate': selectedDate,
                                 'quantity': quantity,
                               };
-                              _addToCart(serviceProduct, 'service');
+                              _addToCart(
+                                  serviceProduct, 'service', selectedDate);
                             }
                           : null,
                       style: ElevatedButton.styleFrom(
@@ -468,7 +539,27 @@ class _ItemServicePageState extends State<ItemServicePage> {
     }
   }
 
-  void _addToCart(Map<String, dynamic> product, String type) async {
+  String getValidImageUrl(Map<String, dynamic> product) {
+    // List of possible image URLs in priority order
+    final imageUrls = [
+      product['imageUrl1'],
+      product['imageUrl2'],
+      product['imageUrl3']
+    ];
+    // Find first valid image URL
+    for (String? url in imageUrls) {
+      if (url != null &&
+          url.isNotEmpty &&
+          !url.toLowerCase().endsWith('.mp4') &&
+          url != 'https://via.placeholder.com/50') {
+        return url;
+      }
+    }
+    return 'https://via.placeholder.com/100';
+  }
+
+  void _addToCart(
+      Map<String, dynamic> product, String type, DateTime? serviceDate) async {
     try {
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
@@ -495,12 +586,19 @@ class _ItemServicePageState extends State<ItemServicePage> {
         return;
       }
 
+      // Format service date if provided
+      String? formattedServiceDate;
+      if (type == 'service' && serviceDate != null) {
+        formattedServiceDate =
+            '${serviceDate.day}/${serviceDate.month}/${serviceDate.year}';
+      }
+
       // Add new item to cart
       final cartItem = {
         'productID': product['productID'],
         'name': product['name'],
         'price': product['price'],
-        'imageUrl1': product['imageUrl1'],
+        'imageUrl1': getValidImageUrl(product), // Use the helper function here
         'condition': product['condition'],
         'type': type,
         'addedAt': FieldValue.serverTimestamp(),
@@ -510,7 +608,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
         'category': product['category'],
         // Add service-specific fields
         if (type == 'service') ...{
-          'serviceDate': product['serviceDate'],
+          'serviceDate': formattedServiceDate, // Save formatted date
           'quantity': product['quantity'] ?? 1,
         }
       };
@@ -1101,6 +1199,8 @@ class _ItemServicePageState extends State<ItemServicePage> {
                                         'quantity': quantity,
                                         'docId': 'direct-buy',
                                         'type': 'service',
+                                        'sellerEmail':
+                                            widget.product['userEmail'],
                                         'sellerName':
                                             widget.product['username'],
                                         'sellerUserId':
@@ -1178,7 +1278,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                       children: [
                         if (_isVideo && _chewieController != null)
                           Chewie(controller: _chewieController!)
-                        else if (images.isNotEmpty)
+                        else ...[
                           CarouselSlider(
                             options: CarouselOptions(
                               height: 300,
@@ -1191,17 +1291,25 @@ class _ItemServicePageState extends State<ItemServicePage> {
                                 });
                               },
                             ),
-                            items: images.map((imageUrl) {
+                            items: _getImageUrls().map((imageUrl) {
                               return Image.network(
                                 imageUrl,
                                 width: double.infinity,
                                 fit: BoxFit.cover,
+                                loadingBuilder:
+                                    (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Center(
+                                      child: CircularProgressIndicator());
+                                },
                               );
                             }).toList(),
                           ),
+                        ],
 
-                        // Media toggle button
-                        if (_videoController != null && images.isNotEmpty)
+                        // Toggle button for video/images
+                        if (_videoController != null &&
+                            _getImageUrls().isNotEmpty)
                           Positioned(
                             top: 10,
                             right: 10,
@@ -1223,38 +1331,9 @@ class _ItemServicePageState extends State<ItemServicePage> {
                               },
                             ),
                           ),
-
-                        // Image indicators
-                        if (!_isVideo && images.length > 1)
-                          Positioned(
-                            bottom: 10,
-                            left: 0,
-                            right: 0,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: images.asMap().entries.map((entry) {
-                                return Container(
-                                  width: 8.0,
-                                  height: 8.0,
-                                  margin: const EdgeInsets.symmetric(
-                                    vertical: 8.0,
-                                    horizontal: 4.0,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.grey.withOpacity(
-                                      _currentImageIndex == entry.key
-                                          ? 0.9
-                                          : 0.4,
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ),
                       ],
                     ),
-                  ),
+                  )
                 ],
 
                 Padding(
@@ -1421,8 +1500,8 @@ class _ItemServicePageState extends State<ItemServicePage> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text(success
-                                      ? 'Added to favorites'
-                                      : 'Removed from favorites'),
+                                      ? 'Added to likes'
+                                      : 'Removed from likes'),
                                   duration: const Duration(seconds: 1),
                                 ),
                               );

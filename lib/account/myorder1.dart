@@ -15,24 +15,8 @@ class _MyOrdersState extends State<MyOrders> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        centerTitle: true, // Ensure the title group is centered
-        title: Row(
-          mainAxisSize:
-              MainAxisSize.min, // Minimize space to just fit the content
-          children: const [
-            Icon(Icons.shopping_bag_outlined, color: Colors.black),
-            SizedBox(width: 8), // Spacing between icon and text
-            Text(
-              "My Orders",
-              style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
+        title: Text('My Orders'),
+        centerTitle: true,
       ),
       body: Column(
         children: [
@@ -105,8 +89,8 @@ class _MyOrdersState extends State<MyOrders> {
     return Row(
       children: [
         _buildStatusTab(0, 'Processing'),
-        _buildStatusTab(1, 'Completed'),
-        _buildStatusTab(2, 'Cancelled'),
+        _buildStatusTab(1, 'Delivered'),
+        _buildStatusTab(2, 'Canceled'),
       ],
     );
   }
@@ -392,59 +376,31 @@ class _MyOrdersState extends State<MyOrders> {
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return Center(
             child: Text(
-              'No orders found',
+              'No ${_getTypeString()} orders found',
               style: const TextStyle(fontSize: 16, color: Colors.grey),
             ),
           );
         }
 
-        // Filter the orders based on the selected tab
         final orders = snapshot.data!.docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
-
-          // Determine the order type
-          String type = '';
-          if (data.containsKey('type')) {
-            type = data['type'] == 'feature'
-                ? 'item'
-                : data['type'].toString().toLowerCase();
-          }
-
-          // Determine the status of the order
+          String type = data['type'] ?? '';
           String status =
               data['status']?.toString().toLowerCase() ?? 'processing';
 
-          // Processing tab: All statuses except "completed" and "cancelled"
-          if (_selectedStatusIndex == 0) {
-            return type == _getTypeString() &&
-                status != 'completed' &&
-                status != 'cancelled';
-          }
-
-          // Completed tab: Only "completed"
-          if (_selectedStatusIndex == 1) {
-            return type == _getTypeString() && status == 'completed';
-          }
-
-          // Cancelled tab: Only "cancelled"
-          if (_selectedStatusIndex == 2) {
-            return type == _getTypeString() && status == 'cancelled';
-          }
-
-          return false; // Fallback for unexpected cases
+          // Match both type and status with the selected filters
+          return type == _getTypeString() && status == _getStatusString();
         }).toList();
 
-        // Display a message if no orders match the filter
         if (orders.isEmpty) {
           return Center(
             child: Text(
-              'No ${_getStatusLabel()} orders found',
+              'No ${_getTypeString()} orders found',
               style: const TextStyle(fontSize: 16, color: Colors.grey),
             ),
           );
         }
 
-        // Build the list of filtered orders
         return ListView.builder(
           itemCount: orders.length,
           itemBuilder: (context, index) {
@@ -453,20 +409,6 @@ class _MyOrdersState extends State<MyOrders> {
         );
       },
     );
-  }
-
-// Helper method to get the selected status label
-  String _getStatusLabel() {
-    switch (_selectedStatusIndex) {
-      case 0:
-        return 'processing';
-      case 1:
-        return 'completed';
-      case 2:
-        return 'cancelled';
-      default:
-        return 'processing';
-    }
   }
 
   Widget _buildStatusTab(int index, String title) {
@@ -517,9 +459,9 @@ class _MyOrdersState extends State<MyOrders> {
       case 0:
         return 'processing';
       case 1:
-        return 'completed';
+        return 'delivered';
       case 2:
-        return 'cancelled';
+        return 'canceled';
       default:
         return 'processing';
     }

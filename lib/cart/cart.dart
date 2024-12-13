@@ -55,6 +55,22 @@ class _CartState extends State<Cart> {
     });
   }
 
+  String getValidImageUrl(Map<String, dynamic> item) {
+    // List of possible image URLs in priority order
+    final imageUrls = [item['imageUrl1'], item['imageUrl2'], item['imageUrl3']];
+
+    // Return first valid image URL
+    for (String? url in imageUrls) {
+      if (url != null &&
+          url.isNotEmpty &&
+          !url.toLowerCase().endsWith('.mp4')) {
+        return url;
+      }
+    }
+
+    return 'https://via.placeholder.com/100';
+  }
+
   String _getRateType(String? category) {
     switch (category?.toLowerCase()) {
       case 'Laundry Service':
@@ -359,7 +375,7 @@ class _CartState extends State<Cart> {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: Image.network(
-                        item['imageUrl1'] ?? 'https://via.placeholder.com/100',
+                        getValidImageUrl(item),
                         width: 100,
                         height: 100,
                         fit: BoxFit.cover,
