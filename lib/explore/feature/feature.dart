@@ -447,11 +447,11 @@ StreamBuilder<bool>(
           bool success = await FavoriteService().toggleFavorite(product);
           if (success) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Added to favorites')),
+              const SnackBar(content: Text('Added to likes')),
             );
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Removed from favorites')),
+              const SnackBar(content: Text('Removed from likes')),
             );
           }
         },

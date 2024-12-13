@@ -585,7 +585,7 @@ final FavoriteService _favoriteService = FavoriteService();
               final success = await _favoriteService.toggleFavorite(product);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(success ? 'Added to favorites' : 'Removed from favorites'),
+                  content: Text(success ? 'Added to likes' : 'Removed from likes'),
                   duration: const Duration(seconds: 1),
                 ),
               );

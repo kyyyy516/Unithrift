@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-
 class FavoriteService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -29,7 +28,7 @@ class FavoriteService {
         'productID': product['productID'],
         'name': product['name'],
         'price': product['price'],
-        'imageUrl1': product['imageUrl1'],
+        'imageUrl1': getValidImageUrl(product),
         'details': product['details'],
         'category': product['category'],
         'type': product['type'],
@@ -39,6 +38,27 @@ class FavoriteService {
       });
       return true;
     }
+  }
+
+  String getValidImageUrl(Map<String, dynamic> product) {
+    // List of possible image URLs in priority order
+    final imageUrls = [
+      product['imageUrl1'],
+      product['imageUrl2'],
+      product['imageUrl3']
+    ];
+
+    // Find first valid image URL
+    for (String? url in imageUrls) {
+      if (url != null &&
+          url.isNotEmpty &&
+          !url.toLowerCase().endsWith('.mp4') &&
+          url != 'https://via.placeholder.com/50') {
+        return url;
+      }
+    }
+
+    return 'https://via.placeholder.com/100';
   }
 
   // Check if item is favorited
@@ -54,20 +74,19 @@ class FavoriteService {
         .snapshots()
         .map((doc) => doc.exists);
   }
+
   // Add this method to your existing FavoriteService class
-Future<bool> isItemFavorited(String productId) async {
-  final user = _auth.currentUser;
-  if (user == null) return false;
+  Future<bool> isItemFavorited(String productId) async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
 
-  final doc = await _firestore
-      .collection('users')
-      .doc(user.uid)
-      .collection('favorites')
-      .doc(productId)
-      .get();
+    final doc = await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('favorites')
+        .doc(productId)
+        .get();
 
-  return doc.exists;
+    return doc.exists;
+  }
 }
-
-}
-

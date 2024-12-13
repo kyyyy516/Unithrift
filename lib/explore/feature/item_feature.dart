@@ -94,6 +94,8 @@ class _ItemFeaturePageState extends State<ItemFeaturePage> {
     // _fetchRatings();
     _initializeVideo();
     fetchGlobalSellerRatings();
+      _initializeMediaContent();
+
   }
 
   // Add this helper method to match ChatList's ID generation
@@ -167,6 +169,84 @@ class _ItemFeaturePageState extends State<ItemFeaturePage> {
       }
     }
   }
+
+
+Future<void> _initializeMediaContent() async {
+  // Reset state
+  setState(() {
+    _isVideo = false;
+    _videoController = null;
+    _chewieController = null;
+  });
+
+  // Find video URL if exists
+  String? videoUrl = _findFirstVideoUrl();
+  
+  if (videoUrl != null) {
+    setState(() => _isVideo = true);
+    try {
+      _videoController = VideoPlayerController.network(videoUrl);
+      await _videoController!.initialize();
+      
+      if (mounted) {
+        setState(() {
+          _chewieController = ChewieController(
+            videoPlayerController: _videoController!,
+            autoPlay: false,
+            looping: false,
+            showControls: true,
+            aspectRatio: _videoController!.value.aspectRatio,
+            placeholder: const Center(child: CircularProgressIndicator()),
+            errorBuilder: (context, errorMessage) {
+              return Center(
+                child: Text(errorMessage, style: const TextStyle(color: Colors.white)),
+              );
+            },
+          );
+        });
+      }
+    } catch (e) {
+      print('Video initialization error: $e');
+      setState(() => _isVideo = false);
+    }
+  }
+}
+
+
+String? _findFirstVideoUrl() {
+  final urls = [
+    widget.product['imageUrl1'],
+    widget.product['imageUrl2'],
+    widget.product['imageUrl3']
+  ];
+  
+  return urls.firstWhere(
+    (url) => url != null && 
+             url.toString().toLowerCase().endsWith('.mp4'),
+    orElse: () => null,
+  );
+}
+
+List<String> _getImageUrls() {
+  List<String> images = [];
+  final urls = [
+    widget.product['imageUrl1'],
+    widget.product['imageUrl2'],
+    widget.product['imageUrl3']
+  ];
+  
+  for (String? url in urls) {
+    if (url != null && 
+        url.isNotEmpty && 
+        !url.toString().toLowerCase().endsWith('.mp4') &&
+        url != 'https://via.placeholder.com/50') {
+      images.add(url);
+    }
+  }
+  
+  return images;
+}
+
 
   /*Future<void> _fetchRatings() async {
     try {
@@ -320,6 +400,29 @@ class _ItemFeaturePageState extends State<ItemFeaturePage> {
     });
   }
 
+
+String getValidImageUrl(Map<String, dynamic> product) {
+  // List of possible image URLs in priority order
+  final imageUrls = [
+    product['imageUrl1'],
+    product['imageUrl2'],
+    product['imageUrl3']
+  ];
+  
+  // Find first valid image URL
+  for (String? url in imageUrls) {
+    if (url != null && 
+        url.isNotEmpty && 
+        !url.toLowerCase().endsWith('.mp4') &&
+        url != 'https://via.placeholder.com/50') {
+      return url;
+    }
+  }
+  
+  return 'https://via.placeholder.com/100';
+}
+
+
   void _addToCart(Map<String, dynamic> product, String type) async {
     try {
       final currentUser = FirebaseAuth.instance.currentUser;
@@ -352,7 +455,7 @@ class _ItemFeaturePageState extends State<ItemFeaturePage> {
         'productID': product['productID'],
         'name': product['name'],
         'price': product['price'],
-        'imageUrl1': product['imageUrl1'],
+      'imageUrl1': getValidImageUrl(product), 
         'condition': product['condition'],
         'type': type,
         'quantity': 1,
@@ -775,89 +878,66 @@ class _ItemFeaturePageState extends State<ItemFeaturePage> {
                             .toLowerCase()
                             .endsWith('.mp4') ==
                         true) ...[
-                  Container(
-                    height: 300,
-                    child: Stack(
-                      children: [
-                        if (_isVideo && _chewieController != null)
-                          Chewie(controller: _chewieController!)
-                        else if (images.isNotEmpty)
-                          CarouselSlider(
-                            options: CarouselOptions(
-                              height: 300,
-                              enlargeCenterPage: true,
-                              viewportFraction: 1.0,
-                              enableInfiniteScroll: images.length > 1,
-                              onPageChanged: (index, reason) {
-                                setState(() {
-                                  _currentImageIndex = index;
-                                });
-                              },
-                            ),
-                            items: images.map((imageUrl) {
-                              return Image.network(
-                                imageUrl,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              );
-                            }).toList(),
-                          ),
+                 Container(
+  height: 300,
+  child: Stack(
+    children: [
+      if (_isVideo && _chewieController != null)
+        Chewie(controller: _chewieController!)
+      else ...[
+        CarouselSlider(
+          options: CarouselOptions(
+            height: 300,
+            enlargeCenterPage: true,
+            viewportFraction: 1.0,
+            enableInfiniteScroll: images.length > 1,
+            onPageChanged: (index, reason) {
+              setState(() {
+                _currentImageIndex = index;
+              });
+            },
+          ),
+          items: _getImageUrls().map((imageUrl) {
+            return Image.network(
+              imageUrl,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Center(child: CircularProgressIndicator());
+              },
+            );
+          }).toList(),
+        ),
+      ],
 
-                        // Media toggle button
-                        if (_videoController != null && images.isNotEmpty)
-                          Positioned(
-                            top: 10,
-                            right: 10,
-                            child: FloatingActionButton.small(
-                              backgroundColor: Colors.white.withOpacity(0.8),
-                              child: Icon(
-                                _isVideo ? Icons.image : Icons.play_circle,
-                                color: Colors.black,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _isVideo = !_isVideo;
-                                  if (_isVideo) {
-                                    _videoController?.play();
-                                  } else {
-                                    _videoController?.pause();
-                                  }
-                                });
-                              },
-                            ),
-                          ),
+      // Toggle button for video/images
+      if (_videoController != null && _getImageUrls().isNotEmpty)
+        Positioned(
+          top: 10,
+          right: 10,
+          child: FloatingActionButton.small(
+            backgroundColor: Colors.white.withOpacity(0.8),
+            child: Icon(
+              _isVideo ? Icons.image : Icons.play_circle,
+              color: Colors.black,
+            ),
+            onPressed: () {
+              setState(() {
+                _isVideo = !_isVideo;
+                if (_isVideo) {
+                  _videoController?.play();
+                } else {
+                  _videoController?.pause();
+                }
+              });
+            },
+          ),
+        ),
+    ],
+  ),
+)
 
-                        // Image indicators
-                        if (!_isVideo && images.length > 1)
-                          Positioned(
-                            bottom: 10,
-                            left: 0,
-                            right: 0,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: images.asMap().entries.map((entry) {
-                                return Container(
-                                  width: 8.0,
-                                  height: 8.0,
-                                  margin: const EdgeInsets.symmetric(
-                                    vertical: 8.0,
-                                    horizontal: 4.0,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.grey.withOpacity(
-                                      _currentImageIndex == entry.key
-                                          ? 0.9
-                                          : 0.4,
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
                 ],
 
                 Padding(
@@ -1035,8 +1115,8 @@ class _ItemFeaturePageState extends State<ItemFeaturePage> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text(success
-                                      ? 'Added to favorites'
-                                      : 'Removed from favorites'),
+                                      ? 'Added to likes'
+                                      : 'Removed from likes'),
                                   duration: const Duration(seconds: 1),
                                 ),
                               );

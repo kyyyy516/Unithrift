@@ -53,7 +53,30 @@ class _CartState extends State<Cart> {
       }
       return cartItems;
     });
+    
   }
+
+
+  String getValidImageUrl(Map<String, dynamic> item) {
+  // List of possible image URLs in priority order
+  final imageUrls = [
+    item['imageUrl1'],
+    item['imageUrl2'],
+    item['imageUrl3']
+  ];
+  
+  // Return first valid image URL
+  for (String? url in imageUrls) {
+    if (url != null && 
+        url.isNotEmpty && 
+        !url.toLowerCase().endsWith('.mp4')) {
+      return url;
+    }
+  }
+  
+  return 'https://via.placeholder.com/100';
+}
+
 
   String _getRateType(String? category) {
     switch (category?.toLowerCase()) {
@@ -356,19 +379,19 @@ class _CartState extends State<Cart> {
                 padding: const EdgeInsets.all(10),
                 child: Row(
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        item['imageUrl1'] ?? 'https://via.placeholder.com/100',
-                        width: 100,
-                        height: 100,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Icon(Icons.image_not_supported,
-                              size: 50);
-                        },
-                      ),
-                    ),
+                   ClipRRect(
+  borderRadius: BorderRadius.circular(8),
+  child: Image.network(
+    getValidImageUrl(item),
+    width: 100,
+    height: 100,
+    fit: BoxFit.cover,
+    errorBuilder: (context, error, stackTrace) {
+      return const Icon(Icons.image_not_supported, size: 50);
+    },
+  ),
+),
+
                     const SizedBox(width: 15),
                     Expanded(
                       child: Column(

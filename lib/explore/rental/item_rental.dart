@@ -10,18 +10,14 @@ import 'package:chewie/chewie.dart';
 import 'dart:math' show min; // Add this import at the top
 import 'package:unithrift/firestore_service.dart';
 
-
 class ItemRentalPage extends StatefulWidget {
   final Map<String, dynamic> product;
 
-
   const ItemRentalPage({super.key, required this.product});
-
 
   @override
   State<ItemRentalPage> createState() => _ItemRentalPageState();
 }
-
 
 class _ItemRentalPageState extends State<ItemRentalPage> {
   int _currentImageIndex = 0;
@@ -35,19 +31,18 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
   List<dynamic> globalRatings = [];
   final FavoriteService _favoriteService = FavoriteService();
 
-
   DateTime? _startDate;
   DateTime? _endDate;
-
 
   @override
   void initState() {
     super.initState();
     _fetchRatings();
     _initializeVideo();
+    _initializeMediaContent();
+
     fetchGlobalSellerRatings();
   }
-
 
   Future<void> fetchGlobalSellerRatings() async {
     try {
@@ -55,22 +50,18 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
       List<double> allRatings = [];
       List<dynamic> allComments = [];
 
-
       // Get user document reference
       DocumentReference userRef =
           FirebaseFirestore.instance.collection('users').doc(sellerId);
-
 
       // Get all products from user's products subcollection
       QuerySnapshot productsSnapshot =
           await userRef.collection('products').get();
 
-
       // Process each product's ratings
       for (var product in productsSnapshot.docs) {
         Map<String, dynamic> productData =
             product.data() as Map<String, dynamic>;
-
 
         // Get ratings for each product regardless of type
         QuerySnapshot ratingSnapshot = await userRef
@@ -79,13 +70,11 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
             .collection('rating')
             .get();
 
-
         // Process ratings
         for (var rating in ratingSnapshot.docs) {
           Map<String, dynamic> ratingData =
               rating.data() as Map<String, dynamic>;
           var ratingValue = ratingData['rating'];
-
 
           if (ratingValue != null) {
             double ratingDouble;
@@ -100,7 +89,6 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
         }
       }
 
-
       // Update state with combined ratings
       setState(() {
         globalRatings = allComments;
@@ -113,7 +101,6 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
     }
   }
 
-
 // Add this helper method to match ChatList's ID generation
   String _generateChatId(String userId1, String userId2) {
     return userId1.hashCode <= userId2.hashCode
@@ -121,97 +108,162 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
         : '${userId2}_$userId1';
   }
 
+  Future<void> _initializeMediaContent() async {
+    // Reset state
+    setState(() {
+      _isVideo = false;
+      _videoController = null;
+      _chewieController = null;
+    });
 
- Future<void> _initializeVideo() async {
-  if (widget.product['imageUrl1'] != null && 
-      widget.product['imageUrl1'].toString().toLowerCase().endsWith('.mp4')) {
-    setState(() => _isVideo = true);
-    
-    try {
-      _videoController = VideoPlayerController.network(widget.product['imageUrl1']);
-      await _videoController!.initialize();
-      setState(() {
-        _chewieController = ChewieController(
-          videoPlayerController: _videoController!,
-          autoPlay: false,
-          looping: false,
-          showControls: true,
-          aspectRatio: _videoController!.value.aspectRatio,
-          placeholder: const Center(child: CircularProgressIndicator()),
-          errorBuilder: (context, errorMessage) {
-            return Center(
-              child: Text(
-                errorMessage,
-                style: const TextStyle(color: Colors.white),
-              ),
+    // Find video URL if exists
+    String? videoUrl = _findFirstVideoUrl();
+
+    if (videoUrl != null) {
+      setState(() => _isVideo = true);
+      try {
+        _videoController = VideoPlayerController.network(videoUrl);
+        await _videoController!.initialize();
+
+        if (mounted) {
+          setState(() {
+            _chewieController = ChewieController(
+              videoPlayerController: _videoController!,
+              autoPlay: false,
+              looping: false,
+              showControls: true,
+              aspectRatio: _videoController!.value.aspectRatio,
+              placeholder: const Center(child: CircularProgressIndicator()),
+              errorBuilder: (context, errorMessage) {
+                return Center(
+                  child: Text(errorMessage,
+                      style: const TextStyle(color: Colors.white)),
+                );
+              },
             );
-          },
-        );
-      });
-    } catch (e) {
-      print('Video initialization error: $e');
-      setState(() => _isVideo = false);
+          });
+        }
+      } catch (e) {
+        print('Video initialization error: $e');
+        setState(() => _isVideo = false);
+      }
     }
   }
-}
 
+  String? _findFirstVideoUrl() {
+    final urls = [
+      widget.product['imageUrl1'],
+      widget.product['imageUrl2'],
+      widget.product['imageUrl3']
+    ];
 
+    return urls.firstWhere(
+      (url) => url != null && url.toString().toLowerCase().endsWith('.mp4'),
+      orElse: () => null,
+    );
+  }
+
+  List<String> _getImageUrls() {
+    List<String> images = [];
+    final urls = [
+      widget.product['imageUrl1'],
+      widget.product['imageUrl2'],
+      widget.product['imageUrl3']
+    ];
+
+    for (String? url in urls) {
+      if (url != null &&
+          url.isNotEmpty &&
+          !url.toString().toLowerCase().endsWith('.mp4') &&
+          url != 'https://via.placeholder.com/50') {
+        images.add(url);
+      }
+    }
+
+    return images;
+  }
+
+  Future<void> _initializeVideo() async {
+    if (widget.product['imageUrl1'] != null &&
+        widget.product['imageUrl1'].toString().toLowerCase().endsWith('.mp4')) {
+      setState(() => _isVideo = true);
+
+      try {
+        _videoController =
+            VideoPlayerController.network(widget.product['imageUrl1']);
+        await _videoController!.initialize();
+        setState(() {
+          _chewieController = ChewieController(
+            videoPlayerController: _videoController!,
+            autoPlay: false,
+            looping: false,
+            showControls: true,
+            aspectRatio: _videoController!.value.aspectRatio,
+            placeholder: const Center(child: CircularProgressIndicator()),
+            errorBuilder: (context, errorMessage) {
+              return Center(
+                child: Text(
+                  errorMessage,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              );
+            },
+          );
+        });
+      } catch (e) {
+        print('Video initialization error: $e');
+        setState(() => _isVideo = false);
+      }
+    }
+  }
 
   Future<void> _fetchRatings() async {
-  try {
-    final ratingsSnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.product['userId'])
-        .collection('products')
-        .doc(widget.product['productID'])
-        .collection('rating')
-        .get();
-
-
-    final List<Map<String, dynamic>> ratingsList = [];
-    double totalRating = 0;
-
-
-    for (var doc in ratingsSnapshot.docs) {
-      final data = doc.data();
-      
-      // Get buyer info
-      final userDoc = await FirebaseFirestore.instance
+    try {
+      final ratingsSnapshot = await FirebaseFirestore.instance
           .collection('users')
-          .doc(data['buyerID'])
+          .doc(widget.product['userId'])
+          .collection('products')
+          .doc(widget.product['productID'])
+          .collection('rating')
           .get();
 
+      final List<Map<String, dynamic>> ratingsList = [];
+      double totalRating = 0;
 
-      final userEmail = userDoc.data()?['email'] ?? 'unknown@graduate.com.my';
-      final maskedEmail = '${userEmail[0]}****@${userEmail.split('@')[1]}';
+      for (var doc in ratingsSnapshot.docs) {
+        final data = doc.data();
 
+        // Get buyer info
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(data['buyerID'])
+            .get();
 
-      ratingsList.add({
-        'buyerId': data['buyerID'],
-        'comment': data['comment'],
-        'rating': double.parse(data['rating'].toString()),
-        'createdAt': data['createdAt'],
-        'userEmail': maskedEmail,
+        final userEmail = userDoc.data()?['email'] ?? 'unknown@graduate.com.my';
+        final maskedEmail = '${userEmail[0]}****@${userEmail.split('@')[1]}';
+
+        ratingsList.add({
+          'buyerId': data['buyerID'],
+          'comment': data['comment'],
+          'rating': double.parse(data['rating'].toString()),
+          'createdAt': data['createdAt'],
+          'userEmail': maskedEmail,
+        });
+
+        totalRating += double.parse(data['rating'].toString());
+      }
+
+      setState(() {
+        ratings = ratingsList;
+        averageRating = ratings.isEmpty ? 0 : totalRating / ratings.length;
       });
-      
-      totalRating += double.parse(data['rating'].toString());
+    } catch (e) {
+      print('Error fetching ratings: $e');
     }
-
-
-    setState(() {
-      ratings = ratingsList;
-      averageRating = ratings.isEmpty ? 0 : totalRating / ratings.length;
-    });
-  } catch (e) {
-    print('Error fetching ratings: $e');
   }
-}
-
-
 
   String getTimeAgo(dynamic timestamp) {
     if (timestamp == null) return 'Recently';
-
 
     DateTime uploadTime;
     if (timestamp is Timestamp) {
@@ -222,9 +274,7 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
       return 'Recently';
     }
 
-
     Duration difference = DateTime.now().difference(uploadTime);
-
 
     if (difference.inSeconds < 60) {
       return '${difference.inSeconds} seconds ago';
@@ -243,6 +293,26 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
     }
   }
 
+  String getValidImageUrl(Map<String, dynamic> product) {
+    // List of possible image URLs in priority order
+    final imageUrls = [
+      product['imageUrl1'],
+      product['imageUrl2'],
+      product['imageUrl3']
+    ];
+
+    // Find first valid image URL
+    for (String? url in imageUrls) {
+      if (url != null &&
+          url.isNotEmpty &&
+          !url.toLowerCase().endsWith('.mp4') &&
+          url != 'https://via.placeholder.com/50') {
+        return url;
+      }
+    }
+
+    return 'https://via.placeholder.com/100';
+  }
 
   void _addToCart(Map<String, dynamic> product, String type) async {
     try {
@@ -254,7 +324,6 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
         return;
       }
 
-
       // Check if product already exists in cart
       final cartSnapshot = await FirebaseFirestore.instance
           .collection('users')
@@ -262,7 +331,6 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
           .collection('cart')
           .where('productID', isEqualTo: product['productID'])
           .get();
-
 
       if (cartSnapshot.docs.isNotEmpty) {
         if (mounted) {
@@ -273,11 +341,9 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
         return;
       }
 
-
       // Format dates for rental items
       String? formattedStartDate;
       String? formattedEndDate;
-
 
       if (type == 'rental' && _startDate != null && _endDate != null) {
         formattedStartDate =
@@ -286,13 +352,12 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
             '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}';
       }
 
-
       // Add new item to cart
       final cartItem = {
         'productID': product['productID'],
         'name': product['name'],
         'price': product['price'],
-        'imageUrl1': product['imageUrl1'],
+        'imageUrl1': getValidImageUrl(product),
         'condition': product['condition'],
         'type': type,
         'quantity': 1,
@@ -307,13 +372,11 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
         }
       };
 
-
       await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser.uid)
           .collection('cart')
           .add(cartItem);
-
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -333,13 +396,11 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
     }
   }
 
-
   String _formatTimestamp(Timestamp? timestamp) {
     if (timestamp == null) return 'No date';
     final date = timestamp.toDate();
     return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
-
 
   // Add this method to show the bottom sheet
   void _showRentalBottomSheet() async {
@@ -352,7 +413,6 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
           .collection('cart')
           .where('productID', isEqualTo: widget.product['productID'])
           .get();
-
 
       if (cartSnapshot.docs.isNotEmpty) {
         if (mounted) {
@@ -369,7 +429,6 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
     int rentalDays = 0;
     double totalPrice = 0;
 
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -384,7 +443,6 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
               totalPrice = rentalDays *
                   (double.parse(widget.product['price'].toString()));
             }
-
 
             return Padding(
               padding: EdgeInsets.only(
@@ -474,7 +532,6 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                                 );
                               },
                             );
-
 
                             if (picked != null) {
                               setState(() {
@@ -578,249 +635,258 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
       },
     );
   }
-void _showBuyNowBottomSheet() async {
-  final currentUser = FirebaseAuth.instance.currentUser;
-  if (currentUser != null) {
-    final cartSnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser.uid)
-        .collection('cart')
-        .where('productID', isEqualTo: widget.product['productID'])
-        .get();
 
-    if (cartSnapshot.docs.isNotEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${widget.product['name']} already exists in cart'),
-            duration: const Duration(seconds: 1),
-          ),
-        );
-      }
-      return;
-    }
-  }
+  void _showBuyNowBottomSheet() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      final cartSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('cart')
+          .where('productID', isEqualTo: widget.product['productID'])
+          .get();
 
-  int rentalDays = 0;
-  double totalPrice = 0;
-
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (context) {
-      return StatefulBuilder(
-        builder: (context, setState) {
-          if (_startDate != null && _endDate != null) {
-            rentalDays = _endDate!.difference(_startDate!).inDays + 1;
-            totalPrice = rentalDays * (double.parse(widget.product['price'].toString()));
-          }
-
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
+      if (cartSnapshot.docs.isNotEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${widget.product['name']} already exists in cart'),
+              duration: const Duration(seconds: 1),
             ),
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
+          );
+        }
+        return;
+      }
+    }
+
+    int rentalDays = 0;
+    double totalPrice = 0;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            if (_startDate != null && _endDate != null) {
+              rentalDays = _endDate!.difference(_startDate!).inDays + 1;
+              totalPrice = rentalDays *
+                  (double.parse(widget.product['price'].toString()));
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                        const Text(
+                          'Select Rental Period',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 35),
+                      ],
+                    ),
+                    // Info Container
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF2F3EC),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      const Text(
-                        'Select Rental Period',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                      child: Row(
+                        children: const [
+                          Icon(Icons.info_outline, color: Color(0xFF808569)),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'To ensure the best purchase experience, we encourage you to chat with the seller first to discuss your needs.',
+                              style: TextStyle(
+                                color: Color(0xFF808569),
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Date Selection
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                            color: const Color(0xFF808569), width: 1.5),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () async {
+                            DateTimeRange? picked = await showDateRangePicker(
+                              context: context,
+                              firstDate: DateTime.now(),
+                              lastDate: DateTime(2025),
+                              initialDateRange:
+                                  _startDate != null && _endDate != null
+                                      ? DateTimeRange(
+                                          start: _startDate!, end: _endDate!)
+                                      : null,
+                              builder: (context, child) {
+                                return Theme(
+                                  data: ThemeData.light().copyWith(
+                                    colorScheme: const ColorScheme.light(
+                                      primary: Color(0xFF424632),
+                                      onPrimary: Colors.white,
+                                      surface: Color(0xFFF2F3EC),
+                                      onSurface: Colors.black,
+                                    ),
+                                  ),
+                                  child: child!,
+                                );
+                              },
+                            );
+
+                            if (picked != null) {
+                              setState(() {
+                                _startDate = picked.start;
+                                _endDate = picked.end;
+                              });
+                            }
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.calendar_today,
+                                    color: Color(0xFF808569)),
+                                const SizedBox(width: 12),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'From - To',
+                                      style: TextStyle(
+                                        color: Color(0xFF808569),
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    Text(
+                                      _startDate != null && _endDate != null
+                                          ? '${_startDate!.day}/${_startDate!.month}/${_startDate!.year} - ${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
+                                          : 'Select dates',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 35),
-                    ],
-                  ),
-                  // Info Container
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF2F3EC),
-                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Row(
-                      children: const [
-                        Icon(Icons.info_outline, color: Color(0xFF808569)),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'To ensure the best purchase experience, we encourage you to chat with the seller first to discuss your needs.',
-                            style: TextStyle(
-                              color: Color(0xFF808569),
-                              fontSize: 13,
-                            ),
+                    const SizedBox(height: 30),
+                    // Price Details
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Rental Duration',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                        Text(
+                          '$rentalDays days',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  // Date Selection
-                  Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xFF808569), width: 1.5),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(8),
-                        onTap: () async {
-                          DateTimeRange? picked = await showDateRangePicker(
-                            context: context,
-                            firstDate: DateTime.now(),
-                            lastDate: DateTime(2025),
-                            initialDateRange: _startDate != null && _endDate != null
-                                ? DateTimeRange(start: _startDate!, end: _endDate!)
-                                : null,
-                            builder: (context, child) {
-                              return Theme(
-                                data: ThemeData.light().copyWith(
-                                  colorScheme: const ColorScheme.light(
-                                    primary: Color(0xFF424632),
-                                    onPrimary: Colors.white,
-                                    surface: Color(0xFFF2F3EC),
-                                    onSurface: Colors.black,
-                                  ),
-                                ),
-                                child: child!,
-                              );
-                            },
-                          );
-
-                          if (picked != null) {
-                            setState(() {
-                              _startDate = picked.start;
-                              _endDate = picked.end;
-                            });
-                          }
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.calendar_today, color: Color(0xFF808569)),
-                              const SizedBox(width: 12),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'From - To',
-                                    style: TextStyle(
-                                      color: Color(0xFF808569),
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  Text(
-                                    _startDate != null && _endDate != null
-                                        ? '${_startDate!.day}/${_startDate!.month}/${_startDate!.year} - ${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
-                                        : 'Select dates',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Total',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                        Text(
+                          'RM ${totalPrice.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 30),
-                  // Price Details
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Rental Duration',
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      Text(
-                        '$rentalDays days',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Total',
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      Text(
-                        'RM ${totalPrice.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 30),
-                  // Buy Now Button
-                  ElevatedButton(
-                    onPressed: _startDate != null && _endDate != null
-                        ? () {
-                            Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => CheckoutPage(
-                                  totalAmount: totalPrice,
-                                  itemCount: 1,
-                                  cartItems: [
-                                    {
-                                      ...widget.product,
-                                      'startRentalDate': '${_startDate!.day}/${_startDate!.month}/${_startDate!.year}',
-                                      'endRentalDate': '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}',
-                                      'type': 'rental',
-                                    }
-                                  ],
-                                  sellerName: widget.product['username'] ?? 'Seller',
+                    const SizedBox(height: 30),
+                    // Buy Now Button
+                    ElevatedButton(
+                      onPressed: _startDate != null && _endDate != null
+                          ? () {
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CheckoutPage(
+                                    totalAmount: totalPrice,
+                                    itemCount: 1,
+                                    cartItems: [
+                                      {
+                                        ...widget.product,
+                                        'startRentalDate':
+                                            '${_startDate!.day}/${_startDate!.month}/${_startDate!.year}',
+                                        'endRentalDate':
+                                            '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}',
+                                        'type': 'rental',
+                                      }
+                                    ],
+                                    sellerName:
+                                        widget.product['username'] ?? 'Seller',
+                                  ),
                                 ),
-                              ),
-                            );
-                          }
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF808569),
-                      minimumSize: const Size(double.infinity, 50),
+                              );
+                            }
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF808569),
+                        minimumSize: const Size(double.infinity, 50),
+                      ),
+                      child: const Text(
+                        'Buy Now',
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
-                    child: const Text(
-                      'Buy Now',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          );
-        },
-      );
-    },
-  );
-}
+            );
+          },
+        );
+      },
+    );
+  }
 
   Widget _buildSellerSection() {
     return Column(
@@ -971,7 +1037,6 @@ void _showBuyNowBottomSheet() async {
       ],
     );
   }
-
 
   Widget _buildRatingSection() {
     return Container(
@@ -1156,29 +1221,25 @@ void _showBuyNowBottomSheet() async {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
-   List<String> images = [];
-if (widget.product['imageUrl1'] != null && 
-    !widget.product['imageUrl1'].toString().toLowerCase().endsWith('.mp4')) {
-  images.add(widget.product['imageUrl1']);
-}
-if (widget.product['imageUrl2'] != null) {
-  images.add(widget.product['imageUrl2']);
-}
-if (widget.product['imageUrl3'] != null) {
-  images.add(widget.product['imageUrl3']);
-}
+    List<String> images = [];
+    if (widget.product['imageUrl1'] != null &&
+        !widget.product['imageUrl1']
+            .toString()
+            .toLowerCase()
+            .endsWith('.mp4')) {
+      images.add(widget.product['imageUrl1']);
+    }
+    if (widget.product['imageUrl2'] != null) {
+      images.add(widget.product['imageUrl2']);
+    }
+    if (widget.product['imageUrl3'] != null) {
+      images.add(widget.product['imageUrl3']);
+    }
 
-
-images.removeWhere((image) => 
-  image == 'https://via.placeholder.com/50' || 
-  image.isEmpty
-);
-
-
-
+    images.removeWhere(
+        (image) => image == 'https://via.placeholder.com/50' || image.isEmpty);
 
     return Scaffold(
       appBar: AppBar(
@@ -1192,94 +1253,76 @@ images.removeWhere((image) =>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Media section (Images and Video)
-               // In the build method, replace the existing media section with:
-if (images.isNotEmpty || widget.product['imageUrl1']?.toString().toLowerCase().endsWith('.mp4') == true) ...[
-  Container(
-    height: 300,
-    child: Stack(
-      children: [
-        if (_isVideo && _chewieController != null)
-          Chewie(controller: _chewieController!)
-        else if (images.isNotEmpty)
-          CarouselSlider(
-            options: CarouselOptions(
-              height: 300,
-              enlargeCenterPage: true,
-              viewportFraction: 1.0,
-              enableInfiniteScroll: images.length > 1,
-              onPageChanged: (index, reason) {
-                setState(() {
-                  _currentImageIndex = index;
-                });
-              },
-            ),
-            items: images.map((imageUrl) {
-              return Image.network(
-                imageUrl,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              );
-            }).toList(),
-          ),
+                // In the build method, replace the existing media section with:
+                if (images.isNotEmpty ||
+                    widget.product['imageUrl1']
+                            ?.toString()
+                            .toLowerCase()
+                            .endsWith('.mp4') ==
+                        true) ...[
+                  Container(
+                    height: 300,
+                    child: Stack(
+                      children: [
+                        if (_isVideo && _chewieController != null)
+                          Chewie(controller: _chewieController!)
+                        else ...[
+                          CarouselSlider(
+                            options: CarouselOptions(
+                              height: 300,
+                              enlargeCenterPage: true,
+                              viewportFraction: 1.0,
+                              enableInfiniteScroll: images.length > 1,
+                              onPageChanged: (index, reason) {
+                                setState(() {
+                                  _currentImageIndex = index;
+                                });
+                              },
+                            ),
+                            items: _getImageUrls().map((imageUrl) {
+                              return Image.network(
+                                imageUrl,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                loadingBuilder:
+                                    (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Center(
+                                      child: CircularProgressIndicator());
+                                },
+                              );
+                            }).toList(),
+                          ),
+                        ],
 
-
-        // Media toggle button
-        if (_videoController != null && images.isNotEmpty)
-          Positioned(
-            top: 10,
-            right: 10,
-            child: FloatingActionButton.small(
-              backgroundColor: Colors.white.withOpacity(0.8),
-              child: Icon(
-                _isVideo ? Icons.image : Icons.play_circle,
-                color: Colors.black,
-              ),
-              onPressed: () {
-                setState(() {
-                  _isVideo = !_isVideo;
-                  if (_isVideo) {
-                    _videoController?.play();
-                  } else {
-                    _videoController?.pause();
-                  }
-                });
-              },
-            ),
-          ),
-
-
-        // Image indicators
-        if (!_isVideo && images.length > 1)
-          Positioned(
-            bottom: 10,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: images.asMap().entries.map((entry) {
-                return Container(
-                  width: 8.0,
-                  height: 8.0,
-                  margin: const EdgeInsets.symmetric(
-                    vertical: 8.0,
-                    horizontal: 4.0,
-                  ),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.grey.withOpacity(
-                      _currentImageIndex == entry.key ? 0.9 : 0.4,
+                        // Toggle button for video/images
+                        if (_videoController != null &&
+                            _getImageUrls().isNotEmpty)
+                          Positioned(
+                            top: 10,
+                            right: 10,
+                            child: FloatingActionButton.small(
+                              backgroundColor: Colors.white.withOpacity(0.8),
+                              child: Icon(
+                                _isVideo ? Icons.image : Icons.play_circle,
+                                color: Colors.black,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _isVideo = !_isVideo;
+                                  if (_isVideo) {
+                                    _videoController?.play();
+                                  } else {
+                                    _videoController?.pause();
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                      ],
                     ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-      ],
-    ),
-  ),
-],
-
-
+                  )
+                ],
 
                 Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -1302,7 +1345,6 @@ if (images.isNotEmpty || widget.product['imageUrl1']?.toString().toLowerCase().e
                           color: Colors.grey,
                         ),
                       ),
-
 
                       const SizedBox(height: 5),
                       Text(
@@ -1335,50 +1377,50 @@ if (images.isNotEmpty || widget.product['imageUrl1']?.toString().toLowerCase().e
                         ),
                       ),
                       const SizedBox(height: 20),
-                    // Replace this part in your ItemRentalPage
-RichText(
-  text: TextSpan(
-    children: [
-      const TextSpan(
-        text: "Condition\n",
-        style: TextStyle(
-          fontSize: 13,
-          color: Color(0xFF808569),
-        ),
-      ),
-      TextSpan(
-        text: "${widget.product['condition'] ?? 'N/A'}",
-        style: const TextStyle(
-          fontSize: 14,
-          color: Colors.black,
-        ),
-      ),
-    ],
-  ),
-),
+                      // Replace this part in your ItemRentalPage
+                      RichText(
+                        text: TextSpan(
+                          children: [
+                            const TextSpan(
+                              text: "Condition\n",
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF808569),
+                              ),
+                            ),
+                            TextSpan(
+                              text: "${widget.product['condition'] ?? 'N/A'}",
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
                       const SizedBox(height: 20),
-                     // For brand
-RichText(
-  text: TextSpan(
-    children: [
-      const TextSpan(
-        text: "Brand\n",
-        style: TextStyle(
-          fontSize: 13,
-          color: Color(0xFF808569),
-        ),
-      ),
-      TextSpan(
-        text: "${widget.product['brand'] ?? 'N/A'}",
-        style: const TextStyle(
-          fontSize: 14,
-          color: Colors.black,
-        ),
-      ),
-    ],
-  ),
-),
+                      // For brand
+                      RichText(
+                        text: TextSpan(
+                          children: [
+                            const TextSpan(
+                              text: "Brand\n",
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF808569),
+                              ),
+                            ),
+                            TextSpan(
+                              text: "${widget.product['brand'] ?? 'N/A'}",
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       const SizedBox(height: 20),
                       RichText(
                         text: TextSpan(
@@ -1444,7 +1486,6 @@ RichText(
                     builder: (context, snapshot) {
                       bool isFavorited = snapshot.data ?? false;
 
-
                       return IconButton(
                         icon: Icon(
                           isFavorited ? Icons.favorite : Icons.favorite_border,
@@ -1456,14 +1497,14 @@ RichText(
                           if (success) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Added to favorites'),
+                                content: Text('Added to likes'),
                                 duration: Duration(seconds: 1),
                               ),
                             );
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Removed from favorites'),
+                                content: Text('Removed from likes'),
                                 duration: Duration(seconds: 1),
                               ),
                             );
@@ -1481,13 +1522,11 @@ RichText(
                         final chatId =
                             _generateChatId(currentUser.uid, sellerUserId);
 
-
                         // Check if the chat room exists
                         final chatDoc = await FirebaseFirestore.instance
                             .collection('chats')
                             .doc(chatId)
                             .get();
-
 
                         // Create or update the chat room with product-specific details
                         if (!chatDoc.exists) {
@@ -1517,14 +1556,12 @@ RichText(
                           });
                         }
 
-
                         // Send a message indicating interest in the product
                         await FirestoreService().sendMessage(
                           chatId,
                           currentUser.uid,
                           "I'm interested in your product: ${widget.product['name']} (RM ${widget.product['price']}).",
                         );
-
 
                         // Navigate to the chat screen
                         Navigator.push(
@@ -1545,23 +1582,23 @@ RichText(
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
-  onPressed: () => _showBuyNowBottomSheet(),
-  style: ElevatedButton.styleFrom(
-    backgroundColor: const Color(0xFFB1BA8E),
-    foregroundColor: Colors.white,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(4),
-    ),
-    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-  ),
-  child: const Text(
-    'Buy Now',
-    style: TextStyle(
-      color: Colors.white,
-    ),
-  ),
-),
-
+                      onPressed: () => _showBuyNowBottomSheet(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFB1BA8E),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 8, horizontal: 16),
+                      ),
+                      child: const Text(
+                        'Buy Now',
+                        style: TextStyle(
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(

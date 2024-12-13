@@ -27,33 +27,38 @@ class _OrderSuccessPageState extends State<OrderSuccessPage> {
     _saveOrderAndClearCart();
   }
 
-  Future<void> _saveOrderAndClearCart() async {
+ Future<void> _saveOrderAndClearCart() async {
   final user = FirebaseAuth.instance.currentUser;
   if (user != null) {
     for (var item in widget.cartItems) {
-      // Calculate the correct total amount based on item type
       double itemTotal = calculateItemTotal(item);
       
-      // Format the service date properly
-      String formattedServiceDate = '';
-      if (item['serviceDate'] != null) {
-        if (item['serviceDate'] is DateTime) {
-          DateTime date = item['serviceDate'];
-          formattedServiceDate = '${date.day}/${date.month}/${date.year}';
-        }
-      }
-
       Map<String, dynamic> orderData = {
         'userId': user.uid,
         'orderId': 'ORD${DateTime.now().millisecondsSinceEpoch}',
         'trackingNo': 'TRK${DateTime.now().millisecondsSinceEpoch}',
-        'imageUrl': item['imageUrl1'],
+        'imageUrl': [
+          item['imageUrl1'],
+          item['imageUrl2'],
+          item['imageUrl3']
+        ].firstWhere(
+          (url) => url != null && 
+                   url.isNotEmpty && 
+                   !url.toLowerCase().endsWith('.mp4'),
+          orElse: () => '',
+        ),
+        'imageUrl1': item['imageUrl1'] ?? '',
+        'imageUrl2': item['imageUrl2'] ?? '',
+        'imageUrl3': item['imageUrl3'] ?? '',
         'name': item['name'],
         'totalAmount': itemTotal,
         'status': 'processing',
         'type': item['type'] ?? 'feature',
         'condition': item['condition'] ?? '',
-        'serviceDate': formattedServiceDate,
+        // Add rental dates
+        'startRentalDate': item['startRentalDate'],
+        'endRentalDate': item['endRentalDate'],
+        'serviceDate': item['serviceDate'],
         'quantity': item['quantity'] ?? 1,
         'timestamp': FieldValue.serverTimestamp(),
         'isMeetup': widget.isMeetup,
@@ -75,7 +80,7 @@ class _OrderSuccessPageState extends State<OrderSuccessPage> {
           .collection('sales')
           .add(orderData);
 
-      // Only delete from cart if it's not a direct buy
+      // Delete from cart if not direct buy
       if (item['docId'] != 'direct-buy') {
         await FirebaseFirestore.instance
             .collection('users')
@@ -87,6 +92,7 @@ class _OrderSuccessPageState extends State<OrderSuccessPage> {
     }
   }
 }
+
 
 
 double calculateItemTotal(Map<String, dynamic> item) {

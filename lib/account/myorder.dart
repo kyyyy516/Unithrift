@@ -12,33 +12,75 @@ class _MyOrdersState extends State<MyOrders> {
   int _selectedStatusIndex = 0;
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('My Orders'),
-        centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          _buildTypesTabs(),
-          _buildStatusTabs(),
-          Expanded(
-            child: _buildOrdersList(),
-          ),
-        ],
-      ),
-    );
-  }
+ Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: Text('My Orders'),
+      centerTitle: true,
+    ),
+    body: Column(
+      children: [
+        _buildTypesTabs(),
+        const SizedBox(height: 7), // Spacing between tabs and status
+        _buildStatusTabs(),
+        Expanded(
+          child: _buildOrdersList(),
+        ),
+      ],
+    ),
+  );
+}
 
-  Widget _buildTypesTabs() {
-    return Row(
+Widget _buildTypesTabs() {
+  return Container(
+    decoration: const BoxDecoration(
+      border: Border(
+        bottom: BorderSide(color: Colors.grey, width: 0.5),
+      ),
+    ),
+    child: Row(
       children: [
         _buildTab(0, 'Items'),
         _buildTab(1, 'Rentals'),
         _buildTab(2, 'Services'),
       ],
-    );
-  }
+    ),
+  );
+}
+
+Widget _buildTab(int index, String title) {
+  return Expanded(
+    child: GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedTabIndex = index;
+          _selectedStatusIndex = 0; // Reset to 'Processing' when switching tabs
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 15),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: _selectedTabIndex == index 
+                  ? const Color(0xFF808569) 
+                  : Colors.transparent,
+              width: 3,
+            ),
+          ),
+        ),
+        child: Text(
+          title,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: _selectedTabIndex == index ? const Color(0xFF808569) : Colors.grey,
+          ),
+        ),
+      ),
+    ),
+  );
+}
 
   Widget _buildStatusTabs() {
     return Row(
@@ -50,42 +92,22 @@ class _MyOrdersState extends State<MyOrders> {
     );
   }
 
-  String? getFirstValidImage(Map<String, dynamic> product) {
-  // Helper function to validate URL
-  bool isValidImageUrl(String? url) {
-    if (url == null || url.isEmpty || url == 'https://via.placeholder.com/50') {
-      return false;
-    }
-    
-    // Check if it's a Firebase Storage URL and not an MP4
-    if (url.startsWith('https://firebasestorage.googleapis.com')) {
-      return !url.toLowerCase().contains('.mp4');
-    }
-    
-    // Check for common image extensions
-    return url.toLowerCase().endsWith('.jpg') ||
-           url.toLowerCase().endsWith('.jpeg') ||
-           url.toLowerCase().endsWith('.png') ||
-           url.toLowerCase().endsWith('.gif');
-  }
-
-  // First try the main imageUrl
-  final mainImage = product['imageUrl'];
-  if (isValidImageUrl(mainImage)) {
-    return mainImage;
-  }
-
-  // Then check all numbered URLs
-  for (int i = 1; i <= 5; i++) {
-    final url = product['imageUrl$i'];
-    if (isValidImageUrl(url)) {
-      return url;
-    }
-  }
-
-  // If no valid image is found, return null
-  return null;
+ String? getFirstValidImage(Map<String, dynamic> data) {
+  // Get first non-MP4 image URL
+  final imageUrls = [
+    data['imageUrl1'],
+    data['imageUrl2'],
+    data['imageUrl3']
+  ].firstWhere(
+    (url) => url != null && 
+             url.isNotEmpty && 
+             !url.toLowerCase().endsWith('.mp4'),
+    orElse: () => data['imageUrl'] ?? 'https://via.placeholder.com/100x100?text=No+Image',
+  );
+  
+  return imageUrls;
 }
+
 
 
 
@@ -113,8 +135,7 @@ class _MyOrdersState extends State<MyOrders> {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: Image.network(
-                        getFirstValidImage(data) ??
-                            'https://via.placeholder.com/100x100?text=No+Image',
+                 getFirstValidImage(data) ?? 'https://via.placeholder.com/100x100?text=No+Image',
                         fit: BoxFit.cover,
                         width: 100,
                         height: 100,
@@ -391,35 +412,7 @@ class _MyOrdersState extends State<MyOrders> {
     );
   }
 
-  Widget _buildTab(int index, String title) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedTabIndex = index;
-          });
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 15),
-          margin: const EdgeInsets.symmetric(horizontal: 5),
-          decoration: BoxDecoration(
-            color: _selectedTabIndex == index
-                ? const Color(0xFFE5E8D9)
-                : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: _selectedTabIndex == index ? Colors.black : Colors.grey,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  
 
   Widget _buildStatusTab(int index, String title) {
     return Expanded(
@@ -485,11 +478,11 @@ class _MyOrdersState extends State<MyOrders> {
       case 0: // Items
         infoText = 'Condition: ${data['condition'] ?? 'N/A'}';
         break;
-      case 1: // Rentals
-        final startDate = _formatDate(data['startDate']);
-        final endDate = _formatDate(data['endDate']);
-        infoText = 'Rental Duration: $startDate - $endDate';
-        break;
+       case 1: // Rentals
+      final startDate = _formatDate(data['startRentalDate']); // Changed from startDate
+      final endDate = _formatDate(data['endRentalDate']); // Changed from endDate
+      infoText = 'Rental Duration: $startDate - $endDate';
+      break;
       case 2: // Services
         final serviceDate = _formatDate(data['serviceDate']);
         infoText = 'Service Date: $serviceDate';
