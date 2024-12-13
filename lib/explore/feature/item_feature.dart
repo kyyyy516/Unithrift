@@ -2,7 +2,9 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart' hide CarouselController;
+import 'package:unithrift/account/favourite_service.dart';
 import 'package:unithrift/chatscreen.dart';
+import 'package:unithrift/checkout/chekout.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'dart:math' show min; // Add this import at the top
@@ -19,7 +21,7 @@ class ItemFeaturePage extends StatefulWidget {
 
 class _ItemFeaturePageState extends State<ItemFeaturePage> {
   int _currentImageIndex = 0;
-  bool _isFavorite = false;
+  final FavoriteService _favoriteService = FavoriteService();
   bool _isVideo = false;
   List<Map<String, dynamic>> ratings = [];
   double averageRating = 0;
@@ -133,22 +135,36 @@ class _ItemFeaturePageState extends State<ItemFeaturePage> {
   }
 
   Future<void> _initializeVideo() async {
-    if (widget.product['videoUrl'] != null) {
-      String videoUrl = widget.product['videoUrl'];
-      // Modify Google Drive URL for video
-      videoUrl =
-          videoUrl.replaceAll('view?usp=sharing', 'uc?export=download&id=');
-      _videoController = VideoPlayerController.network(videoUrl);
-      await _videoController!.initialize();
-      _chewieController = ChewieController(
-        videoPlayerController: _videoController!,
-        autoPlay: false,
-        looping: false,
-        aspectRatio: 16 / 9,
-        placeholder: const Center(child: CircularProgressIndicator()),
-        autoInitialize: true,
-      );
-      setState(() {});
+    if (widget.product['imageUrl1'] != null &&
+        widget.product['imageUrl1'].toString().toLowerCase().endsWith('.mp4')) {
+      setState(() => _isVideo = true);
+
+      try {
+        _videoController =
+            VideoPlayerController.network(widget.product['imageUrl1']);
+        await _videoController!.initialize();
+        setState(() {
+          _chewieController = ChewieController(
+            videoPlayerController: _videoController!,
+            autoPlay: false,
+            looping: false,
+            showControls: true,
+            aspectRatio: _videoController!.value.aspectRatio,
+            placeholder: const Center(child: CircularProgressIndicator()),
+            errorBuilder: (context, errorMessage) {
+              return Center(
+                child: Text(
+                  errorMessage,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              );
+            },
+          );
+        });
+      } catch (e) {
+        print('Video initialization error: $e');
+        setState(() => _isVideo = false);
+      }
     }
   }
 
@@ -202,100 +218,82 @@ class _ItemFeaturePageState extends State<ItemFeaturePage> {
     }
   }*/
 
-  void _buyNow(Map<String, dynamic> product) async {
-    try {
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please log in first')),
-        );
-        return;
-      }
-
-      // Fetch buyer's details from Firestore
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser.uid)
-          .get();
-
-      if (!userDoc.exists) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Unable to fetch user details')),
-        );
-        return;
-      }
-
-      final buyerData = userDoc.data() as Map<String, dynamic>;
-
-      // Create order details
-      final orderData = {
-        'productID': product['productID'],
-        'name': product['name'],
-        'price': product['price'],
-        'imageUrl1': product['imageUrl1'], // Ensure this field is populated
-        'condition': product['condition'],
-        'buyerId': currentUser.uid,
-        'buyerName': buyerData['username'] ?? 'Unknown Buyer',
-        'buyerEmail': buyerData['email'] ?? 'No Email',
-        'sellerUserId': product['userId'],
-        'sellerName': product['username'],
-        'sellerEmail': product['userEmail'],
-        'status': 'Pending', // Initial status of the order
-        'orderDate': FieldValue.serverTimestamp(),
-      };
-
-      // Store order in both buyer's and seller's subcollections
-      final orderRef = FirebaseFirestore.instance.collection('orders').doc();
-
-      // Add order to buyer's subcollection
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser.uid)
-          .collection('orders')
-          .doc(orderRef.id)
-          .set(orderData);
-
-      // Add order to seller's subcollection
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(product['userId'])
-          .collection('sales')
-          .doc(orderRef.id)
-          .set(orderData);
-
-      // Add notifications for buyer and seller with product image URL
-      await _addNotification(
-        userId: currentUser.uid,
-        title: 'Order Placed',
-        message: 'Your order for ${product['name']} has been placed.',
-        productImageUrl: product['imageUrl1'], // Pass product image URL
-        type: 'track', // For buyer notifications
+  void navigateToCheckout(
+      BuildContext context, Map<String, dynamic> product) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in first')),
       );
+      return;
+    }
 
-      await _addNotification(
-        userId: product['userId'],
-        title: 'New Order',
-        message: 'You have a new order for ${product['name']}.',
-        productImageUrl: product['imageUrl1'], // Pass product image URL
-        type: 'manage', // For seller notifications
-      );
+    // Add necessary fields for checkout
+    Map<String, dynamic> checkoutProduct = {
+      ...product,
+      'docId': 'direct-buy',
+      'quantity': 1,
+      'sellerUserId': product['userId'],
+      'sellerName': product['username'],
+      'sellerEmail': product['userEmail'],
+    };
 
-      if (mounted) {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CheckoutPage(
+          totalAmount: double.parse(product['price'].toString()),
+          itemCount: 1,
+          cartItems: [checkoutProduct],
+          sellerName: product['username'] ?? 'Unknown Seller',
+        ),
+      ),
+    );
+
+    if (result == true) {
+      // Create and store order
+      try {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .get();
+
+        final buyerData = userDoc.data() as Map<String, dynamic>;
+        final orderRef = FirebaseFirestore.instance.collection('orders').doc();
+
+        final orderData = {
+          'productID': product['productID'],
+          'name': product['name'],
+          'price': product['price'],
+          'imageUrl1': product['imageUrl1'], //mp4
+          'condition': product['condition'],
+          'buyerId': currentUser.uid,
+          'buyerName': buyerData['username'] ?? 'Unknown Buyer',
+          'buyerEmail': buyerData['email'] ?? 'No Email',
+          'sellerUserId': product['userId'],
+          'sellerName': product['username'],
+          'sellerEmail': product['userEmail'],
+          'status': 'Pending',
+          'orderDate': FieldValue.serverTimestamp(),
+        };
+
+        await Future.wait([
+          FirebaseFirestore.instance
+              .collection('users')
+              .doc(currentUser.uid)
+              .collection('orders')
+              .doc(orderRef.id)
+              .set(orderData),
+          FirebaseFirestore.instance
+              .collection('users')
+              .doc(product['userId'])
+              .collection('sales')
+              .doc(orderRef.id)
+              .set(orderData),
+        ]);
+      } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Order placed successfully!'),
-            duration: Duration(seconds: 1),
-          ),
-        );
-      }
-
-      // Navigate back or refresh the page if necessary
-      Navigator.pop(context);
-    } catch (e) {
-      print('Error placing order: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error placing order: $e')),
+          SnackBar(content: Text('Error processing order: $e')),
         );
       }
     }
@@ -740,13 +738,23 @@ class _ItemFeaturePageState extends State<ItemFeaturePage> {
 
   @override
   Widget build(BuildContext context) {
-    List<String> images = [
-      widget.product['imageUrl1'] ?? 'https://via.placeholder.com/50',
-      widget.product['imageUrl2'] ?? 'https://via.placeholder.com/50',
-      widget.product['imageUrl3'] ?? 'https://via.placeholder.com/50',
-    ];
+    List<String> images = [];
+    if (widget.product['imageUrl1'] != null &&
+        !widget.product['imageUrl1']
+            .toString()
+            .toLowerCase()
+            .endsWith('.mp4')) {
+      images.add(widget.product['imageUrl1']);
+    }
+    if (widget.product['imageUrl2'] != null) {
+      images.add(widget.product['imageUrl2']);
+    }
+    if (widget.product['imageUrl3'] != null) {
+      images.add(widget.product['imageUrl3']);
+    }
 
-    images.removeWhere((image) => image == 'https://via.placeholder.com/50');
+    images.removeWhere(
+        (image) => image == 'https://via.placeholder.com/50' || image.isEmpty);
 
     return Scaffold(
       appBar: AppBar(
@@ -760,78 +768,96 @@ class _ItemFeaturePageState extends State<ItemFeaturePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Media section (Images and Video)
+                // In the build method, replace the existing media section with:
                 if (images.isNotEmpty ||
-                    widget.product['videoUrl'] != null) ...[
-                  Stack(
-                    children: [
-                      if (!_isVideo) ...[
-                        // Image carousel
-                        CarouselSlider(
-                          options: CarouselOptions(
-                            height: 300,
-                            enlargeCenterPage: true,
-                            viewportFraction: 1.0,
-                            enableInfiniteScroll: images.length > 1,
-                            onPageChanged: (index, reason) {
-                              setState(() {
-                                _currentImageIndex = index;
-                              });
-                            },
+                    widget.product['imageUrl1']
+                            ?.toString()
+                            .toLowerCase()
+                            .endsWith('.mp4') ==
+                        true) ...[
+                  Container(
+                    height: 300,
+                    child: Stack(
+                      children: [
+                        if (_isVideo && _chewieController != null)
+                          Chewie(controller: _chewieController!)
+                        else if (images.isNotEmpty)
+                          CarouselSlider(
+                            options: CarouselOptions(
+                              height: 300,
+                              enlargeCenterPage: true,
+                              viewportFraction: 1.0,
+                              enableInfiniteScroll: images.length > 1,
+                              onPageChanged: (index, reason) {
+                                setState(() {
+                                  _currentImageIndex = index;
+                                });
+                              },
+                            ),
+                            items: images.map((imageUrl) {
+                              return Image.network(
+                                imageUrl,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              );
+                            }).toList(),
                           ),
-                          items: images.map((imageUrl) {
-                            return Image.network(
-                              imageUrl,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                            );
-                          }).toList(),
-                        ),
-                      ] else ...[
-                        // Video player
-                        if (_chewieController != null)
-                          SizedBox(
-                            height: 300,
-                            child: Chewie(controller: _chewieController!),
+
+                        // Media toggle button
+                        if (_videoController != null && images.isNotEmpty)
+                          Positioned(
+                            top: 10,
+                            right: 10,
+                            child: FloatingActionButton.small(
+                              backgroundColor: Colors.white.withOpacity(0.8),
+                              child: Icon(
+                                _isVideo ? Icons.image : Icons.play_circle,
+                                color: Colors.black,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _isVideo = !_isVideo;
+                                  if (_isVideo) {
+                                    _videoController?.play();
+                                  } else {
+                                    _videoController?.pause();
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+
+                        // Image indicators
+                        if (!_isVideo && images.length > 1)
+                          Positioned(
+                            bottom: 10,
+                            left: 0,
+                            right: 0,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: images.asMap().entries.map((entry) {
+                                return Container(
+                                  width: 8.0,
+                                  height: 8.0,
+                                  margin: const EdgeInsets.symmetric(
+                                    vertical: 8.0,
+                                    horizontal: 4.0,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.grey.withOpacity(
+                                      _currentImageIndex == entry.key
+                                          ? 0.9
+                                          : 0.4,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
                           ),
                       ],
-                      // Media toggle button
-                      if (widget.product['videoUrl'] != null)
-                        Positioned(
-                          top: 10,
-                          right: 10,
-                          child: FloatingActionButton.small(
-                            backgroundColor: Colors.white.withOpacity(0.8),
-                            child: Icon(
-                              _isVideo ? Icons.image : Icons.play_circle,
-                              color: Colors.black,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _isVideo = !_isVideo;
-                              });
-                            },
-                          ),
-                        ),
-                    ],
-                  ),
-                  // Dot indicators for images
-                  if (!_isVideo && images.length > 1)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: images.asMap().entries.map((entry) {
-                        return Container(
-                          width: 8.0,
-                          height: 8.0,
-                          margin: const EdgeInsets.symmetric(
-                              vertical: 8.0, horizontal: 4.0),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.grey.withOpacity(
-                                _currentImageIndex == entry.key ? 0.9 : 0.4),
-                          ),
-                        );
-                      }).toList(),
                     ),
+                  ),
                 ],
 
                 Padding(
@@ -898,7 +924,7 @@ class _ItemFeaturePageState extends State<ItemFeaturePage> {
                               ),
                             ),
                             TextSpan(
-                              text: "${widget.product['contidion'] ?? 'N/A'}",
+                              text: "${widget.product['condition'] ?? 'N/A'}",
                               style: const TextStyle(
                                 fontSize: 14,
                                 color: Colors.black,
@@ -919,8 +945,7 @@ class _ItemFeaturePageState extends State<ItemFeaturePage> {
                               ),
                             ),
                             TextSpan(
-                              text:
-                                  "${widget.product['brand/edition'] ?? 'N/A'}",
+                              text: "${widget.product['brand'] ?? 'N/A'}",
                               style: const TextStyle(
                                 fontSize: 14,
                                 color: Colors.black,
@@ -990,17 +1015,35 @@ class _ItemFeaturePageState extends State<ItemFeaturePage> {
               ),
               child: Row(
                 children: [
-                  IconButton(
-                    icon: Icon(
-                      _isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: _isFavorite ? Colors.red : null,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _isFavorite = !_isFavorite;
-                      });
-                    },
-                  ),
+                  StreamBuilder<bool>(
+                      stream: _favoriteService
+                          .isFavorite(widget.product['productID']),
+                      builder: (context, snapshot) {
+                        final isFavorited = snapshot.data ?? false;
+
+                        return IconButton(
+                          icon: Icon(
+                            isFavorited
+                                ? Icons.favorite
+                                : Icons.favorite_border,
+                            color: isFavorited ? Colors.red : null,
+                          ),
+                          onPressed: () async {
+                            final success = await _favoriteService
+                                .toggleFavorite(widget.product);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(success
+                                      ? 'Added to favorites'
+                                      : 'Removed from favorites'),
+                                  duration: const Duration(seconds: 1),
+                                ),
+                              );
+                            }
+                          },
+                        );
+                      }),
                   IconButton(
                     icon: const Icon(Icons.chat),
                     onPressed: () async {
@@ -1069,23 +1112,22 @@ class _ItemFeaturePageState extends State<ItemFeaturePage> {
                   const SizedBox(width: 8),
                   Expanded(
                     flex: 2,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        _buyNow(widget.product);
-                      },
+                    child: // In your build method, update the "Buy Now" button:
+                        ElevatedButton(
+                      onPressed: () =>
+                          navigateToCheckout(context, widget.product),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFB1BA8E),
+                        backgroundColor: const Color(0xFF808569),
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 8, horizontal: 16),
                       ),
                       child: const Text(
                         'Buy Now',
                         style: TextStyle(
                           color: Colors.white,
+                          
                         ),
                       ),
                     ),

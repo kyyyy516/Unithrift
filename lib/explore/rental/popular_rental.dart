@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:unithrift/account/favourite_service.dart';
 import 'package:unithrift/explore/feature/item_feature.dart';
 import 'package:unithrift/explore/rental/item_rental.dart';
 import 'package:unithrift/navigation%20bar/bottom_navbar.dart';
@@ -20,7 +21,7 @@ class _PopularRentalPageState extends State<PopularRentalPage> {
   final TextEditingController _categoryController = TextEditingController();
   int _selectedIndex = 0;
   String nameQuery = '';
-  Map<String, bool> favoriteStatus = {}; //favourite
+final FavoriteService _favoriteService = FavoriteService();
 
   DateTime? _startDate;
   DateTime? _endDate;
@@ -423,24 +424,24 @@ class _PopularRentalPageState extends State<PopularRentalPage> {
   } // End of build method
 
   Widget _rentalItem(Map<String, dynamic> product, double width) {
-    List<String> images = [
-      product['imageUrl1'] ?? 'https://via.placeholder.com/50',
-      product['imageUrl2'] ?? 'https://via.placeholder.com/50',
-      product['imageUrl3'] ?? 'https://via.placeholder.com/50',
-      product['imageUrl4'] ?? 'https://via.placeholder.com/50',
-      product['imageUrl5'] ?? 'https://via.placeholder.com/50',
-    ];
+     List<dynamic> images = [
+    product['imageUrl1'],
+    product['imageUrl2'],
+    product['imageUrl3'],
+    product['imageUrl4'],
+    product['imageUrl5'],
+  ].where((url) => 
+    url != null && 
+    url != 'https://via.placeholder.com/50' && 
+    !url.toLowerCase().endsWith('.mp4')
+  ).toList();
 
-    // Filter out empty image URLs (if any)
-    images.removeWhere((image) => image == 'https://via.placeholder.com/50');
-
-    String truncateDescription(String description) {
-      const maxLength = 18;
-      return description.length > maxLength
-          ? '${description.substring(0, maxLength)}...'
-          : description;
-    }
-
+  String truncateDescription(String description) {
+    const maxLength = 18;
+    return description.length > maxLength
+        ? '${description.substring(0, maxLength)}...'
+        : description;
+  }
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -558,38 +559,42 @@ class _PopularRentalPageState extends State<PopularRentalPage> {
                           ],
                         ),
                       ),
-                      StatefulBuilder(//favourittttttttttee
-                          builder: (context, setInnerState) {
-                        return Container(
-                          margin: const EdgeInsets.only(right: 5),
-                          height: 35,
-                          width: 35,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF424632),
-                            shape: BoxShape.circle,
-                          ),
-                          child: IconButton(
-                            padding: EdgeInsets.zero,
-                            iconSize: 20,
-                            icon: Icon(
-                              favoriteStatus[product['productID']] ?? false
-                                  ? Icons.favorite
-                                  : Icons.favorite_border,
-                              color:
-                                  favoriteStatus[product['productID']] ?? false
-                                      ? Colors.red
-                                      : Colors.white,
-                            ),
-                            onPressed: () {
-                              setInnerState(() {
-                                favoriteStatus[product['productID']] =
-                                    !(favoriteStatus[product['productID']] ??
-                                        false);
-                              });
-                            },
-                          ),
-                        );
-                      })
+                      StatefulBuilder(
+  builder: (context, setInnerState) {
+    return Container(
+      margin: const EdgeInsets.only(right: 5),
+      height: 35,
+      width: 35,
+      decoration: const BoxDecoration(
+        color: Color(0xFF424632),
+        shape: BoxShape.circle,
+      ),
+      child: StreamBuilder<bool>(
+        stream: _favoriteService.isFavorite(product['productID']),
+        builder: (context, snapshot) {
+          final isFavorited = snapshot.data ?? false;
+          
+          return IconButton(
+            padding: EdgeInsets.zero,
+            iconSize: 20,
+            icon: Icon(
+              isFavorited ? Icons.favorite : Icons.favorite_border,
+              color: isFavorited ? Colors.red : Colors.white,
+            ),
+            onPressed: () async {
+              final success = await _favoriteService.toggleFavorite(product);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(success ? 'Added to favorites' : 'Removed from favorites'),
+                  duration: const Duration(seconds: 1),
+                ),
+              );
+            },
+          );
+        }
+      ),
+    );
+  },)
                     ],
                   )
                 ],

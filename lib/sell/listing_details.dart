@@ -29,7 +29,7 @@ class _ListingPageState extends State<ListingPage> {
   bool _isVideo = false;
   List<Map<String, dynamic>> ratings = [];
   ChewieController? _chewieController;
-  
+  VideoPlayerController? _videoController;
 
 
   @override
@@ -37,7 +37,43 @@ class _ListingPageState extends State<ListingPage> {
     super.initState();
     print('All Product Data: ${widget.product}'); // Add this line to check what data is coming in, debug
     print('Brand/Edition value: ${widget.product['brand']}');
+     _initializeVideo();
+
   }
+
+
+ Future<void> _initializeVideo() async {//yy
+  if (widget.product['imageUrl1'] != null && 
+      widget.product['imageUrl1'].toString().toLowerCase().endsWith('.mp4')) {
+    setState(() => _isVideo = true);
+    
+    try {
+      _videoController = VideoPlayerController.network(widget.product['imageUrl1']);
+      await _videoController!.initialize();
+      setState(() {
+        _chewieController = ChewieController(
+          videoPlayerController: _videoController!,
+          autoPlay: false,
+          looping: false,
+          showControls: true,
+          aspectRatio: _videoController!.value.aspectRatio,
+          placeholder: const Center(child: CircularProgressIndicator()),
+          errorBuilder: (context, errorMessage) {
+            return Center(
+              child: Text(
+                errorMessage,
+                style: const TextStyle(color: Colors.white),
+              ),
+            );
+          },
+        );
+      });
+    } catch (e) {
+      print('Video initialization error: $e');
+      setState(() => _isVideo = false);
+    }
+  }
+}
 
   // Add this method to get formatted time
   String getTimeAgo(dynamic timestamp) {
@@ -493,15 +529,24 @@ Widget _buildRegularContent() {
   @override
   Widget build(BuildContext context) {
 
-    List<String> images = [
-      widget.product['imageUrl1'] ?? 'https://via.placeholder.com/50',
-      widget.product['imageUrl2'] ?? 'https://via.placeholder.com/50',
-      widget.product['imageUrl3'] ?? 'https://via.placeholder.com/50',
-    ];
+    List<String> images = [];//yy
+if (widget.product['imageUrl1'] != null && 
+    !widget.product['imageUrl1'].toString().toLowerCase().endsWith('.mp4')) {
+  images.add(widget.product['imageUrl1']);
+}
+if (widget.product['imageUrl2'] != null) {
+  images.add(widget.product['imageUrl2']);
+}
+if (widget.product['imageUrl3'] != null) {
+  images.add(widget.product['imageUrl3']);
+}
 
-    // Filter out placeholder images
-    images.removeWhere((image) => image == 'https://via.placeholder.com/50');
-   
+
+images.removeWhere((image) => 
+  image == 'https://via.placeholder.com/50' || 
+  image.isEmpty
+);
+
     final isAvailable = widget.product['isAvailable'] ?? true;
 
     return Scaffold(
@@ -516,79 +561,93 @@ Widget _buildRegularContent() {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Media section (Images and Video)
-                if (images.isNotEmpty ||
-                    widget.product['videoUrl'] != null) ...[
-                  Stack(
-                    children: [
-                      if (!_isVideo) ...[
-                        // Image carousel
-                        CarouselSlider(
-                          options: CarouselOptions(
-                            height: 300,
-                            enlargeCenterPage: true,
-                            viewportFraction: 1.0,
-                            enableInfiniteScroll: images.length > 1,
-                            onPageChanged: (index, reason) {
-                              setState(() {
-                                _currentImageIndex = index;
-                              });
-                            },
-                          ),
-                          items: images.map((imageUrl) {
-                            return Image.network(
-                              imageUrl,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                            );
-                          }).toList(),
-                        ),
-                      ] else ...[
-                        // Video player
-                        if (_chewieController != null)
-                          SizedBox(
-                            height: 300,
-                            child: Chewie(controller: _chewieController!),
-                          ),
-                      ],
-                      // Media toggle button
-                      if (widget.product['videoUrl'] != null)
-                        Positioned(
-                          top: 10,
-                          right: 10,
-                          child: FloatingActionButton.small(
-                            backgroundColor: Colors.white.withOpacity(0.8),
-                            child: Icon(
-                              _isVideo ? Icons.image : Icons.play_circle,
-                              color: Colors.black,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _isVideo = !_isVideo;
-                              });
-                            },
-                          ),
-                        ),
-                    ],
+                             // In the build method, replace the existing media section with:
+if (images.isNotEmpty || widget.product['imageUrl1']?.toString().toLowerCase().endsWith('.mp4') == true) ...[
+  Container(
+    height: 300,
+    child: Stack(
+      children: [
+        if (_isVideo && _chewieController != null)
+          Chewie(controller: _chewieController!)
+        else if (images.isNotEmpty)
+          CarouselSlider(
+            options: CarouselOptions(
+              height: 300,
+              enlargeCenterPage: true,
+              viewportFraction: 1.0,
+              enableInfiniteScroll: images.length > 1,
+              onPageChanged: (index, reason) {
+                setState(() {
+                  _currentImageIndex = index;
+                });
+              },
+            ),
+            items: images.map((imageUrl) {
+              return Image.network(
+                imageUrl,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              );
+            }).toList(),
+          ),
+
+
+        // Media toggle button
+        if (_videoController != null && images.isNotEmpty)
+          Positioned(
+            top: 10,
+            right: 10,
+            child: FloatingActionButton.small(
+              backgroundColor: Colors.white.withOpacity(0.8),
+              child: Icon(
+                _isVideo ? Icons.image : Icons.play_circle,
+                color: Colors.black,
+              ),
+              onPressed: () {
+                setState(() {
+                  _isVideo = !_isVideo;
+                  if (_isVideo) {
+                    _videoController?.play();
+                  } else {
+                    _videoController?.pause();
+                  }
+                });
+              },
+            ),
+          ),
+
+
+        // Image indicators
+        if (!_isVideo && images.length > 1)
+          Positioned(
+            bottom: 10,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: images.asMap().entries.map((entry) {
+                return Container(
+                  width: 8.0,
+                  height: 8.0,
+                  margin: const EdgeInsets.symmetric(
+                    vertical: 8.0,
+                    horizontal: 4.0,
                   ),
-                  // Dot indicators for images
-                  if (!_isVideo && images.length > 1)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: images.asMap().entries.map((entry) {
-                        return Container(
-                          width: 8.0,
-                          height: 8.0,
-                          margin: const EdgeInsets.symmetric(
-                              vertical: 8.0, horizontal: 4.0),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.grey.withOpacity(
-                                _currentImageIndex == entry.key ? 0.9 : 0.4),
-                          ),
-                        );
-                      }).toList(),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.grey.withOpacity(
+                      _currentImageIndex == entry.key ? 0.9 : 0.4,
                     ),
-                ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+      ],
+    ),
+  ),
+],
+
 
                  _buildProductContent(),
                 // Bottom padding for navigation bar

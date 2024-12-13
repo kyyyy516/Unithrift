@@ -47,6 +47,22 @@ class _AllProductPageState extends State<AllProductPage> {
         });
 }
 
+String? getFirstValidImage(Map<String, dynamic> product) {//yy
+  List<dynamic> images = [
+    product['imageUrl1'],
+    product['imageUrl2'],
+    product['imageUrl3'],
+    product['imageUrl4'],
+    product['imageUrl5'],
+  ].where((url) => 
+    url != null && 
+    url != 'https://via.placeholder.com/50' && 
+    !url.toLowerCase().endsWith('.mp4')
+  ).toList();
+
+  return images.isNotEmpty ? images[0] : null;
+}
+
 
   String _getRateType(String? category) {
     switch (category?.toLowerCase()) {
@@ -351,22 +367,22 @@ class _AllProductPageState extends State<AllProductPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Image container with fixed height
-                SizedBox(
-                  height: 130, // Increased height for larger media display
-                  width: double.infinity,
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-                    child: Image.network(
-                      item['imageUrl1'] ?? 'https://via.placeholder.com/200',
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Center(
-                          child: Icon(Icons.image_not_supported, size: 40),
-                        );
-                      },
-                    ),
-                  ),
-                ),
+            SizedBox(//yy
+  height: 130,
+  width: double.infinity,
+  child: ClipRRect(
+    borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+    child: Image.network(
+      getFirstValidImage(item) ?? 'https://via.placeholder.com/200',
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return const Center(
+          child: Icon(Icons.image_not_supported, size: 40),
+        );
+      },
+    ),
+  ),
+),
                 
                 // Content container
                 Expanded(

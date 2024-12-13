@@ -1,23 +1,27 @@
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart' hide CarouselController;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:unithrift/account/favourite_service.dart';
 import 'package:unithrift/explore/feature/item_feature.dart';
 import 'package:unithrift/navigation%20bar/bottom_navbar.dart';
 import 'package:unithrift/navigation%20bar/common_appbar.dart';
 
+
 class FeaturePage extends StatefulWidget {
   const FeaturePage({super.key});
+
 
   @override
   State<FeaturePage> createState() => _FeaturePageState();
 }
+
 
 class _FeaturePageState extends State<FeaturePage> {
   final TextEditingController _searchController = TextEditingController();
   String searchQuery = '';
   String selectedCategory = 'All';
   int _selectedIndex = 0;
-  Map<String, bool> favoriteStatus = {}; //favourite
+
 
   @override
   void initState() {
@@ -29,12 +33,14 @@ class _FeaturePageState extends State<FeaturePage> {
     });
   }
 
+
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
       commonNavigate(context, index);
     });
   }
+
 
   Stream<List<Map<String, dynamic>>> getFeatureProducts() {
     return FirebaseFirestore.instance
@@ -43,11 +49,13 @@ class _FeaturePageState extends State<FeaturePage> {
         .asyncMap((usersSnapshot) async {
       List<Map<String, dynamic>> allProducts = [];
 
+
       for (var userDoc in usersSnapshot.docs) {
         var productsSnapshot = await userDoc.reference
             .collection('products')
             .where('type', isEqualTo: 'feature')
             .get();
+
 
         for (var productDoc in productsSnapshot.docs) {
           var productData = productDoc.data();
@@ -60,9 +68,11 @@ class _FeaturePageState extends State<FeaturePage> {
         }
       }
 
+
       return allProducts;
     });
   }
+
 
   Widget categoryBox(String category) {
     return GestureDetector(
@@ -92,6 +102,7 @@ class _FeaturePageState extends State<FeaturePage> {
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -125,6 +136,7 @@ class _FeaturePageState extends State<FeaturePage> {
                 ),
               ),
             ),
+
 
             // How to Shop Section
             Padding(
@@ -170,6 +182,7 @@ class _FeaturePageState extends State<FeaturePage> {
               ),
             ),
 
+
             // Category Row
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 13.0),
@@ -186,6 +199,7 @@ class _FeaturePageState extends State<FeaturePage> {
                 ),
               ),
             ),
+
 
             // Feature Items Header
             const Padding(
@@ -210,6 +224,7 @@ class _FeaturePageState extends State<FeaturePage> {
               ),
             ),
 
+
             // Feature Products Grid
             StreamBuilder<List<Map<String, dynamic>>>(
               stream: getFeatureProducts(),
@@ -218,11 +233,14 @@ class _FeaturePageState extends State<FeaturePage> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
+
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return const Center(child: Text('No feature items found.'));
                 }
 
+
                 final products = snapshot.data!;
+
 
                 // Filter products based on search and category
                 final filteredProducts = products.where((product) {
@@ -232,25 +250,31 @@ class _FeaturePageState extends State<FeaturePage> {
                   final details =
                       (product['details'] ?? '').toString().toLowerCase();
 
+
                   bool categoryMatch = selectedCategory == 'All' ||
                       category.contains(selectedCategory.toLowerCase());
+
 
                   bool searchMatch = searchQuery.isEmpty ||
                       name.contains(searchQuery) ||
                       category.contains(searchQuery) ||
                       details.contains(searchQuery);
 
+
                   return categoryMatch && searchMatch;
                 }).toList();
+
 
                 if (filteredProducts.isEmpty) {
                   return const Center(child: Text('No matching items found.'));
                 }
 
+
                 return LayoutBuilder(
                   builder: (context, constraints) {
                     final itemWidth = (constraints.maxWidth - 30) / 2;
                     const itemHeight = 280;
+
 
                     return GridView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -278,24 +302,26 @@ class _FeaturePageState extends State<FeaturePage> {
     );
   }
 
+
   Widget _featureItem(Map<String, dynamic> product, double width) {
-    List<String> images = [
-      product['imageUrl1'] ?? 'https://via.placeholder.com/50',
-      product['imageUrl2'] ?? 'https://via.placeholder.com/50',
-      product['imageUrl3'] ?? 'https://via.placeholder.com/50',
-      product['imageUrl4'] ?? 'https://via.placeholder.com/50',
-      product['imageUrl5'] ?? 'https://via.placeholder.com/50',
-    ];
+   List<dynamic> images = [
+    product['imageUrl1'],
+    product['imageUrl2'],
+    product['imageUrl3'],
+    product['imageUrl4'],
+    product['imageUrl5'],
+  ].where((url) => 
+    url != null && 
+    url != 'https://via.placeholder.com/50' && 
+    !url.toLowerCase().endsWith('.mp4')
+  ).toList();
 
-    // Filter out empty image URLs (if any)
-    images.removeWhere((image) => image == 'https://via.placeholder.com/50');
-
-    String truncateDescription(String description) {
-      const maxLength = 18;
-      return description.length > maxLength
-          ? '${description.substring(0, maxLength)}...'
-          : description;
-    }
+  String truncateDescription(String description) {
+    const maxLength = 18;
+    return description.length > maxLength
+        ? '${description.substring(0, maxLength)}...'
+        : description;
+  }
 
     return GestureDetector(
       onTap: () {
@@ -396,38 +422,45 @@ class _FeaturePageState extends State<FeaturePage> {
                           fontSize: 16,
                         ),
                       ),
-                      StatefulBuilder(//favourittttttttttee
-                          builder: (context, setInnerState) {
-                        return Container(
-                          margin: const EdgeInsets.only(right: 5),
-                          height: 35,
-                          width: 35,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF424632),
-                            shape: BoxShape.circle,
-                          ),
-                          child: IconButton(
-                            padding: EdgeInsets.zero,
-                            iconSize: 20,
-                            icon: Icon(
-                              favoriteStatus[product['productID']] ?? false
-                                  ? Icons.favorite
-                                  : Icons.favorite_border,
-                              color:
-                                  favoriteStatus[product['productID']] ?? false
-                                      ? Colors.red
-                                      : Colors.white,
-                            ),
-                            onPressed: () {
-                              setInnerState(() {
-                                favoriteStatus[product['productID']] =
-                                    !(favoriteStatus[product['productID']] ??
-                                        false);
-                              });
-                            },
-                          ),
-                        );
-                      })
+                      // Replace the StatefulBuilder widget in _featureItem with this:
+StreamBuilder<bool>(
+  stream: FavoriteService().isFavorite(product['productID']),
+  builder: (context, snapshot) {
+    bool isFavorited = snapshot.data ?? false;
+    
+    return Container(
+      margin: const EdgeInsets.only(right: 5),
+      height: 35,
+      width: 35,
+      decoration: const BoxDecoration(
+        color: Color(0xFF424632),
+        shape: BoxShape.circle,
+      ),
+      child: IconButton(
+        padding: EdgeInsets.zero,
+        iconSize: 20,
+        icon: Icon(
+          isFavorited ? Icons.favorite : Icons.favorite_border,
+          color: isFavorited ? Colors.red : Colors.white,
+        ),
+        onPressed: () async {
+          bool success = await FavoriteService().toggleFavorite(product);
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Added to favorites')),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Removed from favorites')),
+            );
+          }
+        },
+      ),
+    );
+  },
+)
+
+
                     ],
                   ),
                 ],

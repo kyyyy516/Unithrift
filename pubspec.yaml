@@ -59,6 +59,7 @@ dependencies:
   multi_image_picker_view: ^2.0.0
   cloudinary_public: ^0.23.1
   flutter_rating_bar: ^4.0.0
+  email_otp: ^3.0.2
 
 
 dev_dependencies:

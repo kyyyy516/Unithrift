@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:unithrift/checkout/chekout.dart';
 import 'package:unithrift/navigation%20bar/bottom_navbar.dart';
 
 class Cart extends StatefulWidget {
@@ -565,11 +566,22 @@ class _CartState extends State<Cart> {
               ],
             ),
           ),
+          // Inside _buildSellerCartSection
           Padding(
             padding: const EdgeInsets.all(10),
             child: ElevatedButton(
               onPressed: () {
-                // Implement checkout logic
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CheckoutPage(
+                      totalAmount: totalPrice,
+                      itemCount: items.length,
+                      cartItems: items,
+                      sellerName: seller,
+                    ),
+                  ),
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF808569),

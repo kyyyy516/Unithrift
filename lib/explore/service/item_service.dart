@@ -2,7 +2,9 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart' hide CarouselController;
+import 'package:unithrift/account/favourite_service.dart';
 import 'package:unithrift/chatscreen.dart';
+import 'package:unithrift/checkout/chekout.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'dart:math' show min; // Add this import at the top
@@ -19,7 +21,6 @@ class ItemServicePage extends StatefulWidget {
 
 class _ItemServicePageState extends State<ItemServicePage> {
   int _currentImageIndex = 0;
-  bool _isFavorite = false;
   bool _isVideo = false;
   List<Map<String, dynamic>> ratings = [];
   double averageRating = 0;
@@ -28,6 +29,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
   ChewieController? _chewieController;
   double globalAverageRating = 0.0;
   List<dynamic> globalRatings = [];
+  final FavoriteService _favoriteService = FavoriteService();
 
   DateTime? selectedDate;
   int quantity = 1;
@@ -383,22 +385,36 @@ class _ItemServicePageState extends State<ItemServicePage> {
   }
 
   Future<void> _initializeVideo() async {
-    if (widget.product['videoUrl'] != null) {
-      String videoUrl = widget.product['videoUrl'];
-      // Modify Google Drive URL for video
-      videoUrl =
-          videoUrl.replaceAll('view?usp=sharing', 'uc?export=download&id=');
-      _videoController = VideoPlayerController.network(videoUrl);
-      await _videoController!.initialize();
-      _chewieController = ChewieController(
-        videoPlayerController: _videoController!,
-        autoPlay: false,
-        looping: false,
-        aspectRatio: 16 / 9,
-        placeholder: const Center(child: CircularProgressIndicator()),
-        autoInitialize: true,
-      );
-      setState(() {});
+    if (widget.product['imageUrl1'] != null &&
+        widget.product['imageUrl1'].toString().toLowerCase().endsWith('.mp4')) {
+      setState(() => _isVideo = true);
+
+      try {
+        _videoController =
+            VideoPlayerController.network(widget.product['imageUrl1']);
+        await _videoController!.initialize();
+        setState(() {
+          _chewieController = ChewieController(
+            videoPlayerController: _videoController!,
+            autoPlay: false,
+            looping: false,
+            showControls: true,
+            aspectRatio: _videoController!.value.aspectRatio,
+            placeholder: const Center(child: CircularProgressIndicator()),
+            errorBuilder: (context, errorMessage) {
+              return Center(
+                child: Text(
+                  errorMessage,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              );
+            },
+          );
+        });
+      } catch (e) {
+        print('Video initialization error: $e');
+        setState(() => _isVideo = false);
+      }
     }
   }
 
@@ -873,15 +889,269 @@ class _ItemServicePageState extends State<ItemServicePage> {
     );
   }
 
+  void _showBuyNowBottomSheet() async {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            double totalPrice =
+                quantity * double.parse(widget.product['price'].toString());
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Same UI as _showServiceBottomSheet
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                        const Text(
+                          'Service Details',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 40),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF2F3EC),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: const [
+                          Icon(
+                            Icons.info_outline,
+                            color: Color(0xFF808569),
+                          ),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'To ensure the best purchase experience, we encourage you to chat with the seller first to discuss your needs.',
+                              style: TextStyle(
+                                color: Color(0xFF808569),
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Date Selection
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                            color: const Color(0xFF808569), width: 1.5),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () async {
+                            final DateTime? picked = await showDatePicker(
+                              context: context,
+                              initialDate: DateTime.now(),
+                              firstDate: DateTime.now(),
+                              lastDate: DateTime(2025),
+                              builder: (context, child) {
+                                return Theme(
+                                  data: ThemeData.light().copyWith(
+                                    colorScheme: const ColorScheme.light(
+                                      primary: Color(0xFF424632),
+                                      onPrimary: Colors.white,
+                                      surface: Color(0xFFF2F3EC),
+                                      onSurface: Colors.black,
+                                    ),
+                                  ),
+                                  child: child!,
+                                );
+                              },
+                            );
+                            if (picked != null) {
+                              setState(() {
+                                selectedDate = picked;
+                              });
+                            }
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.calendar_today,
+                                    color: Color(0xFF808569)),
+                                const SizedBox(width: 12),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Service Date',
+                                      style: TextStyle(
+                                        color: Color(0xFF808569),
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    Text(
+                                      selectedDate != null
+                                          ? '${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}'
+                                          : 'Select date',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Quantity Selection
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Quantity', style: TextStyle(fontSize: 16)),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.remove),
+                              onPressed: () {
+                                if (quantity > 1) {
+                                  setState(() => quantity--);
+                                }
+                              },
+                            ),
+                            Text('$quantity',
+                                style: const TextStyle(fontSize: 16)),
+                            IconButton(
+                              icon: const Icon(Icons.add),
+                              onPressed: () {
+                                setState(() => quantity++);
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Total Price
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Total',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                        Text(
+                          'RM ${totalPrice.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
+                    // ... Other UI elements same as _showServiceBottomSheet ...
+
+                    // Change only the button at the bottom
+                    ElevatedButton(
+                      onPressed: selectedDate != null
+                          ? () {
+                              Navigator.pop(context);
+                              // Navigate to checkout
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CheckoutPage(
+                                    totalAmount: totalPrice,
+                                    itemCount: 1,
+                                    cartItems: [
+                                      {
+                                        ...widget.product,
+                                        'serviceDate': selectedDate,
+                                        'quantity': quantity,
+                                        'docId': 'direct-buy',
+                                        'type': 'service',
+                                        'sellerName':
+                                            widget.product['username'],
+                                        'sellerUserId':
+                                            widget.product['userId'],
+                                      }
+                                    ],
+                                    sellerName:
+                                        widget.product['username'] ?? 'Seller',
+                                  ),
+                                ),
+                              );
+                            }
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF808569),
+                        minimumSize: const Size(double.infinity, 50),
+                      ),
+                      child: const Text(
+                        'Buy Now',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    List<String> images = [
-      widget.product['imageUrl1'] ?? 'https://via.placeholder.com/50',
-      widget.product['imageUrl2'] ?? 'https://via.placeholder.com/50',
-      widget.product['imageUrl3'] ?? 'https://via.placeholder.com/50',
-    ];
+    List<String> images = [];
+    if (widget.product['imageUrl1'] != null &&
+        !widget.product['imageUrl1']
+            .toString()
+            .toLowerCase()
+            .endsWith('.mp4')) {
+      images.add(widget.product['imageUrl1']);
+    }
+    if (widget.product['imageUrl2'] != null) {
+      images.add(widget.product['imageUrl2']);
+    }
+    if (widget.product['imageUrl3'] != null) {
+      images.add(widget.product['imageUrl3']);
+    }
 
-    images.removeWhere((image) => image == 'https://via.placeholder.com/50');
+    images.removeWhere(
+        (image) => image == 'https://via.placeholder.com/50' || image.isEmpty);
 
     return Scaffold(
       appBar: AppBar(
@@ -895,78 +1165,96 @@ class _ItemServicePageState extends State<ItemServicePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Media section (Images and Video)
+                // In the build method, replace the existing media section with:
                 if (images.isNotEmpty ||
-                    widget.product['videoUrl'] != null) ...[
-                  Stack(
-                    children: [
-                      if (!_isVideo) ...[
-                        // Image carousel
-                        CarouselSlider(
-                          options: CarouselOptions(
-                            height: 300,
-                            enlargeCenterPage: true,
-                            viewportFraction: 1.0,
-                            enableInfiniteScroll: images.length > 1,
-                            onPageChanged: (index, reason) {
-                              setState(() {
-                                _currentImageIndex = index;
-                              });
-                            },
+                    widget.product['imageUrl1']
+                            ?.toString()
+                            .toLowerCase()
+                            .endsWith('.mp4') ==
+                        true) ...[
+                  Container(
+                    height: 300,
+                    child: Stack(
+                      children: [
+                        if (_isVideo && _chewieController != null)
+                          Chewie(controller: _chewieController!)
+                        else if (images.isNotEmpty)
+                          CarouselSlider(
+                            options: CarouselOptions(
+                              height: 300,
+                              enlargeCenterPage: true,
+                              viewportFraction: 1.0,
+                              enableInfiniteScroll: images.length > 1,
+                              onPageChanged: (index, reason) {
+                                setState(() {
+                                  _currentImageIndex = index;
+                                });
+                              },
+                            ),
+                            items: images.map((imageUrl) {
+                              return Image.network(
+                                imageUrl,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              );
+                            }).toList(),
                           ),
-                          items: images.map((imageUrl) {
-                            return Image.network(
-                              imageUrl,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                            );
-                          }).toList(),
-                        ),
-                      ] else ...[
-                        // Video player
-                        if (_chewieController != null)
-                          SizedBox(
-                            height: 300,
-                            child: Chewie(controller: _chewieController!),
+
+                        // Media toggle button
+                        if (_videoController != null && images.isNotEmpty)
+                          Positioned(
+                            top: 10,
+                            right: 10,
+                            child: FloatingActionButton.small(
+                              backgroundColor: Colors.white.withOpacity(0.8),
+                              child: Icon(
+                                _isVideo ? Icons.image : Icons.play_circle,
+                                color: Colors.black,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _isVideo = !_isVideo;
+                                  if (_isVideo) {
+                                    _videoController?.play();
+                                  } else {
+                                    _videoController?.pause();
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+
+                        // Image indicators
+                        if (!_isVideo && images.length > 1)
+                          Positioned(
+                            bottom: 10,
+                            left: 0,
+                            right: 0,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: images.asMap().entries.map((entry) {
+                                return Container(
+                                  width: 8.0,
+                                  height: 8.0,
+                                  margin: const EdgeInsets.symmetric(
+                                    vertical: 8.0,
+                                    horizontal: 4.0,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.grey.withOpacity(
+                                      _currentImageIndex == entry.key
+                                          ? 0.9
+                                          : 0.4,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
                           ),
                       ],
-                      // Media toggle button
-                      if (widget.product['videoUrl'] != null)
-                        Positioned(
-                          top: 10,
-                          right: 10,
-                          child: FloatingActionButton.small(
-                            backgroundColor: Colors.white.withOpacity(0.8),
-                            child: Icon(
-                              _isVideo ? Icons.image : Icons.play_circle,
-                              color: Colors.black,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _isVideo = !_isVideo;
-                              });
-                            },
-                          ),
-                        ),
-                    ],
-                  ),
-                  // Dot indicators for images
-                  if (!_isVideo && images.length > 1)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: images.asMap().entries.map((entry) {
-                        return Container(
-                          width: 8.0,
-                          height: 8.0,
-                          margin: const EdgeInsets.symmetric(
-                              vertical: 8.0, horizontal: 4.0),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.grey.withOpacity(
-                                _currentImageIndex == entry.key ? 0.9 : 0.4),
-                          ),
-                        );
-                      }).toList(),
                     ),
+                  ),
                 ],
 
                 Padding(
@@ -1113,17 +1401,35 @@ class _ItemServicePageState extends State<ItemServicePage> {
               ),
               child: Row(
                 children: [
-                  IconButton(
-                    icon: Icon(
-                      _isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: _isFavorite ? Colors.red : null,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _isFavorite = !_isFavorite;
-                      });
-                    },
-                  ),
+                  StreamBuilder<bool>(
+                      stream: _favoriteService
+                          .isFavorite(widget.product['productID']),
+                      builder: (context, snapshot) {
+                        final isFavorited = snapshot.data ?? false;
+
+                        return IconButton(
+                          icon: Icon(
+                            isFavorited
+                                ? Icons.favorite
+                                : Icons.favorite_border,
+                            color: isFavorited ? Colors.red : null,
+                          ),
+                          onPressed: () async {
+                            final success = await _favoriteService
+                                .toggleFavorite(widget.product);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(success
+                                      ? 'Added to favorites'
+                                      : 'Removed from favorites'),
+                                  duration: const Duration(seconds: 1),
+                                ),
+                              );
+                            }
+                          },
+                        );
+                      }),
                   IconButton(
                     icon: const Icon(Icons.chat),
                     onPressed: () async {
@@ -1190,11 +1496,12 @@ class _ItemServicePageState extends State<ItemServicePage> {
                     },
                   ),
                   const SizedBox(width: 8),
+                  // Then update the Buy Now button in the build method:
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
                       onPressed: () {
-                        // Buy now functionality
+                        _showBuyNowBottomSheet();
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFB1BA8E),

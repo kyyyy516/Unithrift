@@ -316,7 +316,7 @@ class _UploadRentalPageState extends State<UploadRentalPage> {
 
       // Add media URLs
       for (var i = 0; i < _mediaUrls.length; i++) {
-        productData['mediaUrl${i + 1}'] = _mediaUrls[i];
+        productData['imageUrl${i + 1}'] = _mediaUrls[i];//yy
       }
 
       // Upload to Firestore and get the document reference

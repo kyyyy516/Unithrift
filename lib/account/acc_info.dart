@@ -7,8 +7,10 @@ import 'package:unithrift/account/edit_info.dart';
 import 'package:unithrift/account/my_sales.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:unithrift/account/myorder.dart';
+import 'package:unithrift/account/showfavourite.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart'; 
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../sell/my_listing.dart';
 
 class AccountInfo extends StatefulWidget {
@@ -83,7 +85,7 @@ class _AccountInfoState extends State<AccountInfo> {
     }
   }
 
-    Future<void> _pickAndUploadImage(String type) async {
+  Future<void> _pickAndUploadImage(String type) async {
     try {
       final XFile? pickedFile =
           await _picker.pickImage(source: ImageSource.gallery);
@@ -180,17 +182,17 @@ class _AccountInfoState extends State<AccountInfo> {
     }
   }
 
- // Function to launch URLs
+  // Function to launch URLs
   Future<void> _launchURL(String url) async {
-    print("Attempting to launch URL: $url");  // Debugging line
-    final Uri uri = Uri.parse(url);  // Make sure URL is properly parsed
+    print("Attempting to launch URL: $url"); // Debugging line
+    final Uri uri = Uri.parse(url); // Make sure URL is properly parsed
 
     // Checking if the URL can be launched
     if (await canLaunch(uri.toString())) {
-      print("Launching URL: $url");  // Debugging line
+      print("Launching URL: $url"); // Debugging line
       await launch(uri.toString());
     } else {
-      print("Error: Could not launch the URL");  // Debugging line
+      print("Error: Could not launch the URL"); // Debugging line
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Could not open the link')),
       );
@@ -198,30 +200,31 @@ class _AccountInfoState extends State<AccountInfo> {
   }
 
   Future<void> _deleteBackgroundImage() async {
-  try {
-    User? user = _auth.currentUser;
-    if (user != null) {
-      // Remove the backgroundImage field from Firestore
-      await _firestore.collection('users').doc(user.uid).update({
-        'backgroundImage': FieldValue.delete(),
-      });
+    try {
+      User? user = _auth.currentUser;
+      if (user != null) {
+        // Remove the backgroundImage field from Firestore
+        await _firestore.collection('users').doc(user.uid).update({
+          'backgroundImage': FieldValue.delete(),
+        });
 
-      // Update the local state to reflect the deletion
-      setState(() {
-        userData!['backgroundImage'] = null;
-      });
+        // Update the local state to reflect the deletion
+        setState(() {
+          userData!['backgroundImage'] = null;
+        });
 
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Background image removed successfully!')),
+        );
+      }
+    } catch (e) {
+      print("Error deleting background image: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Background image removed successfully!')),
+        SnackBar(content: Text('Error removing background image: $e')),
       );
     }
-  } catch (e) {
-    print("Error deleting background image: $e");
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error removing background image: $e')),
-    );
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -308,138 +311,149 @@ class _AccountInfoState extends State<AccountInfo> {
               Container(
                 color: Colors.green[100],
                 child: Stack(
-          children: [
-          // The background section
-          Container(
-          height: 200, // Match the green area size
-          width: double.infinity,
-          decoration: BoxDecoration(
-            image: userData['backgroundImage'] != null
-              ? DecorationImage(
-                image: NetworkImage(userData['backgroundImage']),
-                fit: BoxFit.cover, // Ensures the image covers the entire container
-              )
-            : null,
-          color: Colors.green[100], // Fallback green color if no image is set
-        ),
-        child: Stack(
-          children: [
-            // "Change Background" button positioned in the top-right corner
-            Positioned(
-              top: 10, // Adjust distance from the top
-              right: 50, // Position next to the delete button
-              child: GestureDetector(
-                onTap: () => _pickAndUploadImage('background'), // Change background image
-                child: const CircleAvatar(
-                  radius: 14, // Small circular button size
-                  backgroundColor: Colors.white,
-                  child: Icon(
-                    Icons.edit,
-                    size: 14, // Icon size
-                    color: Colors.black, // Icon color
-                  ),
-                ),
-              ),
-            ),
-        
-          // "Delete Background" button positioned in the top-right corner
-          Positioned(
-            top: 10, // Adjust distance from the top
-            right: 10, // Adjust distance from the right
-            child: GestureDetector(
-              onTap: () => _deleteBackgroundImage(), // Delete background image
-              child: const CircleAvatar(
-                radius: 14, // Small circular button size
-                backgroundColor: Colors.red, // Red background for delete button
-                child: Icon(
-                  Icons.delete, // Delete icon
-                  size: 14, // Icon size
-                  color: Colors.white, // Icon color
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        ),
-                Column(
                   children: [
-                    Stack(
-                      children: [
-                        GestureDetector(
-                          onTap: () {
-                            if (userData['profileImage'] != null) {
-                              _showFullScreenImage(userData['profileImage']);
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content:
-                                      Text('No profile picture to display'),
+                    // The background section
+                    Container(
+                      height: 200, // Match the green area size
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        image: userData['backgroundImage'] != null
+                            ? DecorationImage(
+                                image:
+                                    NetworkImage(userData['backgroundImage']),
+                                fit: BoxFit
+                                    .cover, // Ensures the image covers the entire container
+                              )
+                            : null,
+                        color: Colors.green[
+                            100], // Fallback green color if no image is set
+                      ),
+                      child: Stack(
+                        children: [
+                          // "Change Background" button positioned in the top-right corner
+                          Positioned(
+                            top: 10, // Adjust distance from the top
+                            right: 50, // Position next to the delete button
+                            child: GestureDetector(
+                              onTap: () => _pickAndUploadImage(
+                                  'background'), // Change background image
+                              child: const CircleAvatar(
+                                radius: 14, // Small circular button size
+                                backgroundColor: Colors.white,
+                                child: Icon(
+                                  Icons.edit,
+                                  size: 14, // Icon size
+                                  color: Colors.black, // Icon color
                                 ),
-                              );
-                            }
-                          },
-                          child: CircleAvatar(
-                            radius: 40,
-                            backgroundImage: userData['profileImage'] != null
-                                ? NetworkImage(userData['profileImage'])
-                                : const AssetImage('assets/profile.png')
-                                    as ImageProvider,
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: GestureDetector(
-                            onTap: () => _pickAndUploadImage('profile'),
-                            child: const CircleAvatar(
-                              radius: 14,
-                              backgroundColor: Colors.white,
-                              child: Icon(
-                                Icons.edit,
-                                size: 16,
-                                color: Colors.black,
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      userData['username'] ?? 'User Name',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+
+                          // "Delete Background" button positioned in the top-right corner
+                          Positioned(
+                            top: 10, // Adjust distance from the top
+                            right: 10, // Adjust distance from the right
+                            child: GestureDetector(
+                              onTap: () =>
+                                  _deleteBackgroundImage(), // Delete background image
+                              child: const CircleAvatar(
+                                radius: 14, // Small circular button size
+                                backgroundColor: Colors
+                                    .red, // Red background for delete button
+                                child: Icon(
+                                  Icons.delete, // Delete icon
+                                  size: 14, // Icon size
+                                  color: Colors.white, // Icon color
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    Column(
                       children: [
-                        const Icon(Icons.star, color: Colors.yellow, size: 18),
-                        const SizedBox(width: 4),
-                        Text(
-                          userData['rating']?.toString() ?? '0.0',
-                          style: const TextStyle(fontSize: 14),
+                        Stack(
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                if (userData['profileImage'] != null) {
+                                  _showFullScreenImage(
+                                      userData['profileImage']);
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content:
+                                          Text('No profile picture to display'),
+                                    ),
+                                  );
+                                }
+                              },
+                              child: CircleAvatar(
+                                radius: 40,
+                                backgroundImage:
+                                    userData['profileImage'] != null
+                                        ? NetworkImage(userData['profileImage'])
+                                        : const AssetImage('assets/profile.png')
+                                            as ImageProvider,
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: GestureDetector(
+                                onTap: () => _pickAndUploadImage('profile'),
+                                child: const CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor: Colors.white,
+                                  child: Icon(
+                                    Icons.edit,
+                                    size: 16,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
+                        const SizedBox(height: 10),
+                        Text(
+                          userData['username'] ?? 'User Name',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.star,
+                                color: Colors.yellow, size: 18),
+                            const SizedBox(width: 4),
+                            Text(
+                              userData['rating']?.toString() ?? '0.0',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          userData['address'] ?? 'Location Unknown',
+                          style: const TextStyle(
+                              color: Colors.black, fontSize: 14),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          userData['bio'] ?? 'No bio added',
+                          style: const TextStyle(
+                              color: Colors.black, fontSize: 16),
+                        ),
+                        const SizedBox(height: 20),
                       ],
                     ),
-                    const SizedBox(height: 5),
-                    Text(
-                      userData['address'] ?? 'Location Unknown',
-                      style: const TextStyle(color: Colors.black, fontSize: 14),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      userData['bio'] ?? 'No bio added',
-                      style: const TextStyle(color: Colors.black, fontSize: 16),
-                    ),
-                  const SizedBox(height: 20),
-                ],
+                  ],
+                ),
               ),
-            ],
-            ),
-            ),
               const SizedBox(height: 20),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -455,7 +469,14 @@ class _AccountInfoState extends State<AccountInfo> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => MyOrders(),
+                            ),
+                          );
+                        },
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -477,7 +498,14 @@ class _AccountInfoState extends State<AccountInfo> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ShowFavorites(),
+                            ),
+                          );
+                        },
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -537,8 +565,12 @@ class _AccountInfoState extends State<AccountInfo> {
                         child: TabBarView(
                           children: [
                             const AllProductPage(),
-                            const Center(child: Text('Reviews Section')), // Placeholder for Reviews
-                            const Center(child: Text('About Section')),   // Placeholder for About
+                            const Center(
+                                child: Text(
+                                    'Reviews Section')), // Placeholder for Reviews
+                            const Center(
+                                child: Text(
+                                    'About Section')), // Placeholder for About
                           ],
                         ),
                       ),
