@@ -299,6 +299,16 @@ class _MySalesPageState extends State<MySalesPage> {
         'rating': averageRating,
       });
 
+      // Send a notification to the buyer
+      await _addNotification(
+        userId: userId,
+        title: 'You Received a Review',
+        message:
+            '$reviewerName left a review on your transaction: "$reviewText" with a rating of $rating stars.',
+        productImageUrl: productDetails['productImage'],
+        type: 'review',
+      );
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Review submitted successfully!')),
       );
@@ -514,11 +524,14 @@ class _MySalesPageState extends State<MySalesPage> {
         : '$userId2\_$userId1';
   }
 
-  void _navigateToDetails(Map<String, dynamic> sale) {
+  void _navigateToDetail(Map<String, dynamic> sale) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => OrderDetailsPage(sale: sale),
+        builder: (context) => OrderDetailsPage(
+          orderData: sale,
+          isSeller: true, // Seller role
+        ),
       ),
     );
   }
@@ -752,7 +765,7 @@ class _MySalesPageState extends State<MySalesPage> {
         : null;
 
     return GestureDetector(
-      onTap: () => _navigateToDetails(sale), // Navigate to the detailed view
+      onTap: () => _navigateToDetail(sale), // Navigate to the detailed view
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
         padding: const EdgeInsets.all(15),

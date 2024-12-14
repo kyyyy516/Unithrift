@@ -1,6 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_rating_bar/flutter_rating_bar.dart';
+import 'package:intl/intl.dart';
+import 'package:unithrift/account/OrderDetailsPage.dart';
+import 'package:unithrift/chatscreen.dart';
 
 class MyOrders extends StatefulWidget {
   @override
@@ -128,128 +132,192 @@ class _MyOrdersState extends State<MyOrders> {
   Widget _buildOrderCard(DocumentSnapshot order) {
     Map<String, dynamic> data = order.data() as Map<String, dynamic>;
 
+    final orderDate = data['orderDate'] != null
+        ? (data['orderDate'] as Timestamp).toDate()
+        : null;
+
     return Card(
-      margin: const EdgeInsets.all(8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(15),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Product Section
+            Row(
               children: [
-                Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    // In _buildOrderCard, update the Image.network part:
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        getFirstValidImage(data) ??
-                            'https://via.placeholder.com/100x100?text=No+Image',
-                        fit: BoxFit.cover,
-                        width: 100,
-                        height: 100,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: 100,
-                            height: 100,
-                            color: Colors.grey[200],
-                            child: Icon(Icons.image_not_supported,
-                                color: Colors.grey[400]),
-                          );
-                        },
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Container(
-                            width: 100,
-                            height: 100,
-                            color: Colors.grey[100],
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                value: loadingProgress.expectedTotalBytes !=
-                                        null
-                                    ? loadingProgress.cumulativeBytesLoaded /
-                                        loadingProgress.expectedTotalBytes!
-                                    : null,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    )),
-                const SizedBox(width: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    getFirstValidImage(data) ??
+                        'https://via.placeholder.com/100',
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(width: 15),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Product name
                       Text(
-                        data['name'] ?? 'Product Name',
+                        data['name'] ?? 'Unknown Product',
                         style: const TextStyle(
-                          fontSize: 18,
                           fontWeight: FontWeight.bold,
+                          fontSize: 16,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      // Order details in grey
+                      const SizedBox(height: 5),
+                      Text(
+                        'RM ${data['totalAmount']?.toStringAsFixed(2) ?? '0.00'}',
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
                       Text(
                         'Order ID: ${order.id}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
+                        style:
+                            const TextStyle(color: Colors.grey, fontSize: 12),
                       ),
                       Text(
-                        'Tracking No: ${data['trackingNo'] ?? 'N/A'}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      _buildSpecificInfo(order),
-                      Text(
-                        'Total: RM ${data['totalAmount']?.toStringAsFixed(2) ?? '0.00'}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
+                        orderDate != null
+                            ? 'Order Date: ${DateFormat.yMMMd().format(orderDate)}'
+                            : 'Order Date: Not available',
+                        style:
+                            const TextStyle(color: Colors.grey, fontSize: 12),
                       ),
                     ],
                   ),
                 ),
+                // Chat Icon
+                IconButton(
+                  icon: const Icon(Icons.chat_outlined, color: Colors.black),
+                  onPressed: () => _navigateToChat(data),
+                ),
               ],
             ),
-          ),
-          ButtonBar(
-            children: [
-              ElevatedButton(
-                onPressed: () => _navigateToDetails(order),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF808569),
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+            const SizedBox(height: 15),
+
+            // Order Status, View Details, and Leave a Review Button
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Status: ${data['status'] ?? 'Processing'}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => _navigateToDetail(data),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF808569),
+                        padding: const EdgeInsets.symmetric(horizontal: 15),
+                      ),
+                      child: const Text('View Details',
+                          style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
                 ),
-                child: const Text('Details',
-                    style: TextStyle(color: Colors.white)),
-              ),
-              ElevatedButton(
-                onPressed: () => _showReviewDialog(order),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFB1BA8E),
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                ),
-                child:
-                    const Text('Review', style: TextStyle(color: Colors.white)),
-              ),
-            ],
-          ),
-        ],
+                // Leave a Review Button (only show if not reviewed and completed)
+                if (data['status']?.toLowerCase() == 'completed' &&
+                    data['reviewed'] != true)
+                  Container(
+                    margin: const EdgeInsets.only(top: 10),
+                    alignment: Alignment.centerRight,
+                    child: ElevatedButton(
+                      onPressed: () => _showReviewDialog(order),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF808569),
+                        padding: const EdgeInsets.symmetric(horizontal: 15),
+                      ),
+                      child: const Text('Leave a Review',
+                          style: TextStyle(color: Colors.white)),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  void _navigateToChat(Map<String, dynamic> order) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null && order['sellerUserId'] != null) {
+      final sellerId = order['sellerUserId'];
+      final chatId = _generateChatId(currentUser.uid, sellerId);
+
+      // Check if the chat room exists
+      final chatDoc = await FirebaseFirestore.instance
+          .collection('chats')
+          .doc(chatId)
+          .get();
+
+      // Create or update the chat room with order-specific details
+      if (!chatDoc.exists) {
+        await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
+          'users': [currentUser.uid, sellerId],
+          'createdAt': FieldValue.serverTimestamp(),
+          'contextType': 'orders',
+          'orderId': order['orderId'],
+          'productName': order['name'],
+          'productImage': order['imageUrl'],
+        });
+      } else {
+        await FirebaseFirestore.instance
+            .collection('chats')
+            .doc(chatId)
+            .update({
+          'contextType': 'orders',
+          'orderId': order['orderId'],
+          'productName': order['name'],
+          'productImage': order['imageUrl1'],
+        });
+      }
+
+      // Navigate to the chat screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChatScreen(chatId: chatId),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to start chat.')),
+      );
+    }
+  }
+
+  void _navigateToDetail(Map<String, dynamic> order) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OrderDetailsPage(
+          orderData: order,
+          isSeller: false, // Buyer role
+        ),
+      ),
+    );
+  }
+
+  String _generateChatId(String userId1, String userId2) {
+    return (userId1.compareTo(userId2) < 0)
+        ? '$userId1\_$userId2'
+        : '$userId2\_$userId1';
   }
 
   String _formatDate(dynamic date) {
@@ -266,113 +334,223 @@ class _MyOrdersState extends State<MyOrders> {
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text('Review ${order['name']}'),
-          content: SingleChildScrollView(
-            // Added SingleChildScrollView
-            child: Container(
-              width: MediaQuery.of(context).size.width *
-                  0.8, // Set width constraint
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(5, (index) {
-                      return IconButton(
-                        icon: Icon(
-                          index < _rating ? Icons.star : Icons.star_border,
-                          color: Color(0xFF808569),
-                        ),
-                        onPressed: () {
-                          setDialogState(() {
-                            _rating = index + 1.0;
-                          });
-                        },
-                      );
-                    }),
-                  ),
-                  SizedBox(height: 10), // Added spacing
-                  TextField(
-                    controller: commentController,
-                    decoration: InputDecoration(
-                      hintText: 'Write your review...',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.all(10), // Adjusted padding
-                    ),
-                    maxLines: 3,
-                  ),
-                ],
+      builder: (context) => AlertDialog(
+        title: Text('Review ${order['name']}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            RatingBar.builder(
+              initialRating: _rating,
+              minRating: 1,
+              direction: Axis.horizontal,
+              allowHalfRating: false,
+              itemCount: 5,
+              itemBuilder: (context, _) => const Icon(
+                Icons.star,
+                color: Colors.amber,
               ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (_rating == 0) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Please select a rating')),
-                  );
-                  return;
-                }
-                await _submitReview(order, _rating, commentController.text);
-                Navigator.pop(context);
+              onRatingUpdate: (rating) {
+                _rating = rating;
               },
-              child: Text('Submit'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: commentController,
+              decoration: const InputDecoration(
+                labelText: 'Write a review...',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
             ),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (_rating > 0) {
+                await _submitReview(order, _rating, commentController.text);
+                Navigator.pop(context);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please select a rating')),
+                );
+              }
+            },
+            child: const Text('Submit'),
+          ),
+        ],
       ),
     );
   }
 
   Future<void> _submitReview(
-      DocumentSnapshot order, double rating, String comment) async {
+      DocumentSnapshot order, double rating, String reviewText) async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
+      final FirebaseFirestore db = FirebaseFirestore.instance;
+      final FirebaseAuth auth = FirebaseAuth.instance;
+
+      final user = auth.currentUser;
       if (user == null) return;
 
-      Map<String, dynamic> data = order.data() as Map<String, dynamic>;
+      final data = order.data() as Map<String, dynamic>;
 
-      final reviewData = {
-        'buyerId': user.uid,
-        'userEmail': user.email,
-        'comment': comment,
+      // Fetch reviewer's name
+      String reviewerName = 'Anonymous';
+      final reviewerDoc = await db.collection('users').doc(user.uid).get();
+      if (reviewerDoc.exists) {
+        reviewerName = reviewerDoc.data()?['username'] ?? 'Anonymous';
+      }
+
+      // Extract product details from order
+      final String productId = data['productID'] ?? '';
+      final String productName = data['name'] ?? 'Unknown Product';
+      final String productImage = data['imageUrl'] ?? '';
+      final double productPrice = (data['price'] as num?)?.toDouble() ?? 0.0;
+      final String sellerId = data['sellerUserId'] ?? '';
+
+      // Prepare review data
+      final Map<String, dynamic> reviewData = {
+        'reviewerId': user.uid,
+        'reviewerName': reviewerName,
+        'orderId': order.id,
+        'productId': productId,
+        'productName': productName,
+        'productImage': productImage,
+        'productPrice': productPrice,
         'rating': rating,
-        'createdAt': FieldValue.serverTimestamp(),
-        'productId': data['productId'],
-        'productName': data['name'],
-        'imageUrl': data['imageUrl'],
-        'orderType': data['type'],
-        'sellerId': data['sellerUserId']
+        'reviewText': reviewText,
+        'role': 'buyer',
+        'timestamp': FieldValue.serverTimestamp(),
       };
 
-      // Updated path to match your structure
-      await FirebaseFirestore.instance
-          .collection('products')
-          .doc(data['productId'])
-          .collection('reviews')
-          .add(reviewData);
+      // Add review to the seller's reviews collection
+      final sellerReviewsRef =
+          db.collection('users').doc(sellerId).collection('reviews');
+      await sellerReviewsRef.add(reviewData);
 
-      // Update order status
-      await FirebaseFirestore.instance
+      // Update the seller's average rating
+      final sellerReviewsSnapshot = await sellerReviewsRef.get();
+      double totalSellerRating = 0;
+      for (var review in sellerReviewsSnapshot.docs) {
+        totalSellerRating += (review.data()['rating'] as num).toDouble();
+      }
+      final sellerAverageRating =
+          totalSellerRating / sellerReviewsSnapshot.docs.length;
+
+      await db.collection('users').doc(sellerId).update({
+        'rating': sellerAverageRating,
+      });
+
+      // If the product type is "rental" or "service," add the review to the product reviews collection
+      if (data['type'] == 'rental' || data['type'] == 'service') {
+        final productReviewsRef = db
+            .collection('users')
+            .doc(sellerId)
+            .collection('products')
+            .doc(productId)
+            .collection('reviews');
+        await productReviewsRef.add(reviewData);
+
+        // Update the product's average rating
+        final productReviewsSnapshot = await productReviewsRef.get();
+        double totalProductRating = 0;
+        for (var review in productReviewsSnapshot.docs) {
+          totalProductRating += (review.data()['rating'] as num).toDouble();
+        }
+        final productAverageRating =
+            totalProductRating / productReviewsSnapshot.docs.length;
+
+        await db
+            .collection('users')
+            .doc(sellerId)
+            .collection('products')
+            .doc(productId)
+            .update({
+          'averageRating': productAverageRating,
+        });
+      }
+
+      // Mark the order as reviewed
+      await db
           .collection('users')
           .doc(user.uid)
           .collection('orders')
           .doc(order.id)
-          .update({
-        'reviewed': true,
-        'rating': rating,
-        'reviewText': comment,
-        'reviewedAt': FieldValue.serverTimestamp(),
+          .update({'reviewed': true});
+
+      // Send notification to the seller
+      await _addNotification(
+        userId: sellerId,
+        title: 'New Review Received',
+        message:
+            '$reviewerName left a review for their order: "$reviewText" with a rating of $rating stars.',
+        productImageUrl: productImage,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Review submitted successfully!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error submitting review: $e')),
+      );
+    }
+  }
+
+  Future<void> _addNotification({
+    required String userId,
+    required String title,
+    required String message,
+    String? productImageUrl,
+  }) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('notifications')
+          .add({
+        'title': title,
+        'message': message,
+        'productImageUrl': productImageUrl,
+        'isRead': false,
+        'timestamp': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      print('Error submitting review: $e');
+      print('Error sending notification: $e');
+    }
+  }
+
+  Future<void> _updateSellerRating(String sellerId) async {
+    try {
+      final db = FirebaseFirestore.instance;
+
+      // Get all reviews for the seller
+      final reviewsSnapshot = await db
+          .collection('users')
+          .doc(sellerId)
+          .collection('reviews')
+          .get();
+
+      if (reviewsSnapshot.docs.isEmpty) return;
+
+      // Calculate the new average rating
+      double totalRating = 0;
+      for (var review in reviewsSnapshot.docs) {
+        totalRating += (review.data()['rating'] as double);
+      }
+      final averageRating = totalRating / reviewsSnapshot.docs.length;
+
+      // Update the seller's profile with the new average rating
+      await db
+          .collection('users')
+          .doc(sellerId)
+          .update({'rating': averageRating});
+    } catch (e) {
+      print('Error updating seller rating: $e');
     }
   }
 

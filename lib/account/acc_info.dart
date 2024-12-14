@@ -536,10 +536,8 @@ class _AccountInfoState extends State<AccountInfo> {
                 DefaultTabController(
                   length: 3,
                   child: SingleChildScrollView(
-                    // Allow scrolling for the entire page
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.stretch, // Ensures full width
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const TabBar(
                           tabs: [
@@ -549,13 +547,14 @@ class _AccountInfoState extends State<AccountInfo> {
                           ],
                         ),
                         Container(
-                          // Provide fixed height for TabBarView
-                          height: MediaQuery.of(context).size.height *
-                              0.7, // Adjust height
+                          height: MediaQuery.of(context).size.height * 0.7,
                           child: TabBarView(
                             children: [
                               const AllProductPage(),
-                              const ReviewsSection(),
+                              if (userData != null)
+                                ReviewsSection(
+                                    userId: FirebaseAuth.instance.currentUser!
+                                        .uid), // Pass the userId
                               const Center(child: Text('About Section')),
                             ],
                           ),

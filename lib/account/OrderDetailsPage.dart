@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:unithrift/account/view_user_profile.dart';
 
 class OrderDetailsPage extends StatelessWidget {
-  final Map<String, dynamic> sale;
+  final Map<String, dynamic> orderData;
+  final bool isSeller; // True for My Sales, False for My Orders
 
-  const OrderDetailsPage({Key? key, required this.sale}) : super(key: key);
+  const OrderDetailsPage({
+    Key? key,
+    required this.orderData,
+    required this.isSeller,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -27,36 +33,44 @@ class OrderDetailsPage extends StatelessWidget {
               icon: Icons.shopping_bag,
               child: _buildProductInfo(),
             ),
-            _buildSection(
-              title: 'Buyer Information',
-              icon: Icons.person,
-              child: _buildBuyerInfo(),
-            ),
+            if (isSeller)
+              _buildSection(
+                title: 'Buyer Information',
+                icon: Icons.person,
+                child: _buildBuyerInfo(context),
+              )
+            else
+              _buildSection(
+                title: 'Seller Information',
+                icon: Icons.store,
+                child: _buildSellerInfo(context),
+              ),
             _buildSection(
               title: 'Order Details',
               icon: Icons.receipt_long,
               child: _buildOrderDetails(),
             ),
-            if (sale['type'] == 'rental') ...[
+            if (orderData['type'] == 'rental') ...[
               _buildSection(
                 title: 'Rental Details',
                 icon: Icons.calendar_today,
                 child: _buildRentalDetails(),
               ),
-            ] else if (sale['type'] == 'service') ...[
+            ] else if (orderData['type'] == 'service') ...[
               _buildSection(
                 title: 'Service Details',
                 icon: Icons.build_circle,
                 child: _buildServiceDetails(),
               ),
             ],
-            if (sale['isMeetup'] == true) ...[
+            if (orderData['isMeetup'] == true) ...[
               _buildSection(
                 title: 'Meetup Information',
                 icon: Icons.location_on,
                 child: _buildMeetupDetails(),
               ),
-            ] else if (!sale['isMeetup'] && sale['address'] != null) ...[
+            ] else if (!orderData['isMeetup'] &&
+                orderData['address'] != null) ...[
               _buildSection(
                 title: 'Delivery Information',
                 icon: Icons.local_shipping,
@@ -66,7 +80,7 @@ class OrderDetailsPage extends StatelessWidget {
             _buildSection(
               title: 'Status History',
               icon: Icons.history,
-              child: _buildStatusHistory(sale['orderId']),
+              child: _buildStatusHistory(orderData['orderId']),
             ),
           ],
         ),
@@ -114,61 +128,142 @@ class OrderDetailsPage extends StatelessWidget {
       leading: ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: Image.network(
-          sale['imageUrl1'] ?? 'https://via.placeholder.com/100',
+          orderData['imageUrl1'] ?? 'https://via.placeholder.com/100',
           width: 80,
           height: 80,
           fit: BoxFit.cover,
         ),
       ),
       title: Text(
-        sale['name'] ?? 'Unknown Product',
+        orderData['name'] ?? 'Unknown Product',
         style: const TextStyle(fontWeight: FontWeight.bold),
       ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Condition: ${sale['condition'] ?? 'N/A'}'),
-          Text('Price: RM ${sale['price']?.toStringAsFixed(2) ?? '0.00'}'),
+          Text('Condition: ${orderData['condition'] ?? 'N/A'}'),
+          Text('Price: RM ${orderData['price']?.toStringAsFixed(2) ?? '0.00'}'),
         ],
       ),
     );
   }
 
-  Widget _buildBuyerInfo() {
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundImage: sale['buyerProfileImage'] != null
-            ? NetworkImage(sale['buyerProfileImage'])
-            : null,
-        backgroundColor: Colors.grey[300],
-        child: sale['buyerProfileImage'] == null
-            ? Text(
-                sale['buyerName']?.substring(0, 1).toUpperCase() ?? 'B',
-                style: const TextStyle(color: Colors.black),
-              )
-            : null,
+  Widget _buildBuyerInfo(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => UserProfilePage(
+              userId: orderData['buyerId'], // Pass buyer's userId
+            ),
+          ),
+        );
+      },
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundImage: orderData['buyerProfileImage'] != null
+              ? NetworkImage(orderData['buyerProfileImage'])
+              : null,
+          backgroundColor: Colors.grey[300],
+          child: orderData['buyerProfileImage'] == null
+              ? Text(
+                  orderData['buyerName']?.substring(0, 1).toUpperCase() ?? 'B',
+                  style: const TextStyle(color: Colors.black),
+                )
+              : null,
+        ),
+        title: Text(
+          orderData['buyerName'] ?? 'Unknown Buyer',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(orderData['buyerEmail'] ?? 'No Email'),
       ),
-      title: Text(
-        sale['buyerName'] ?? 'Unknown Buyer',
-        style: const TextStyle(fontWeight: FontWeight.bold),
-      ),
-      subtitle: Text(sale['buyerEmail'] ?? 'No Email'),
+    );
+  }
+
+  Widget _buildSellerInfo(BuildContext context) {
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('users')
+          .doc(orderData['sellerUserId'])
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const ListTile(
+            leading: CircleAvatar(
+              backgroundColor: Colors.grey,
+              child: CircularProgressIndicator(color: Colors.white),
+            ),
+            title: Text('Loading...'),
+          );
+        }
+
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return ListTile(
+            leading: const CircleAvatar(
+              backgroundColor: Colors.grey,
+              child: Icon(Icons.person, color: Colors.white),
+            ),
+            title: Text(
+              orderData['sellerName'] ?? 'Unknown Seller',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(orderData['sellerEmail'] ?? 'No Email'),
+          );
+        }
+
+        final sellerData = snapshot.data!.data() as Map<String, dynamic>?;
+
+        return InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => UserProfilePage(
+                  userId: orderData['sellerUserId'], // Pass seller's userId
+                ),
+              ),
+            );
+          },
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundImage: sellerData?['profileImage'] != null
+                  ? NetworkImage(sellerData!['profileImage'])
+                  : null,
+              backgroundColor: Colors.grey[300],
+              child: sellerData?['profileImage'] == null
+                  ? Text(
+                      orderData['sellerName']?.substring(0, 1).toUpperCase() ??
+                          'S',
+                      style: const TextStyle(color: Colors.black),
+                    )
+                  : null,
+            ),
+            title: Text(
+              orderData['sellerName'] ?? 'Unknown Seller',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(orderData['sellerEmail'] ?? 'No Email'),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildOrderDetails() {
     return Column(
       children: [
-        _buildDetailRow('Order ID', sale['orderId']),
+        _buildDetailRow('Order ID', orderData['orderId']),
         _buildDetailRow(
           'Order Date',
           DateFormat.yMMMd()
               .add_jm()
-              .format((sale['orderDate'] as Timestamp).toDate()),
+              .format((orderData['orderDate'] as Timestamp).toDate()),
         ),
         _buildDetailRow('Total Amount',
-            'RM ${sale['totalAmount']?.toStringAsFixed(2) ?? '0.00'}'),
-        _buildDetailRow('Quantity', '${sale['quantity'] ?? 1}'),
+            'RM ${orderData['totalAmount']?.toStringAsFixed(2) ?? '0.00'}'),
+        _buildDetailRow('Quantity', '${orderData['quantity'] ?? 1}'),
       ],
     );
   }
@@ -176,8 +271,8 @@ class OrderDetailsPage extends StatelessWidget {
   Widget _buildRentalDetails() {
     return Column(
       children: [
-        _buildDetailRow('Start Date', sale['startRentalDate']),
-        _buildDetailRow('End Date', sale['endRentalDate']),
+        _buildDetailRow('Start Date', orderData['startRentalDate']),
+        _buildDetailRow('End Date', orderData['endRentalDate']),
       ],
     );
   }
@@ -185,7 +280,7 @@ class OrderDetailsPage extends StatelessWidget {
   Widget _buildServiceDetails() {
     return Column(
       children: [
-        _buildDetailRow('Service Date', sale['serviceDate']),
+        _buildDetailRow('Service Date', orderData['serviceDate']),
       ],
     );
   }
@@ -195,18 +290,18 @@ class OrderDetailsPage extends StatelessWidget {
       children: [
         _buildDetailRow(
           'Meetup Location',
-          sale['meetingDetails']?['location'] ??
-              sale['address'] ??
+          orderData['meetingDetails']?['location'] ??
+              orderData['address'] ??
               'Not specified',
         ),
-        if (sale['meetingDetails']?['time'] != null)
-          _buildDetailRow('Date & Time', sale['meetingDetails']?['time']),
+        if (orderData['meetingDetails']?['time'] != null)
+          _buildDetailRow('Date & Time', orderData['meetingDetails']?['time']),
       ],
     );
   }
 
   Widget _buildDeliveryDetails() {
-    return _buildDetailRow('Delivery Address', sale['address']);
+    return _buildDetailRow('Delivery Address', orderData['address']);
   }
 
   Widget _buildDetailRow(String label, String? value) {
@@ -235,7 +330,7 @@ class OrderDetailsPage extends StatelessWidget {
       stream: FirebaseFirestore.instance
           .collection('users')
           .doc(FirebaseAuth.instance.currentUser?.uid)
-          .collection('sales')
+          .collection(isSeller ? 'sales' : 'orders') // Adjust collection
           .doc(orderId)
           .collection('statusHistory')
           .orderBy('timestamp', descending: false)

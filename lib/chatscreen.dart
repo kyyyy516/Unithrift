@@ -67,7 +67,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
               final chatData = snapshot.data!.data() as Map<String, dynamic>;
 
-              if (chatData['contextType'] == 'sales') {
+              if (chatData['contextType'] == 'sales' ||
+                  chatData['contextType'] == 'orders') {
                 // Sales page chat
                 return Container(
                   color: Colors.grey[100],

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart'; // For formatting timestamps
 
 class ReviewsSection extends StatefulWidget {
-  const ReviewsSection({Key? key}) : super(key: key);
+  final String userId; // Add userId to specify whose reviews to display
+
+  const ReviewsSection({Key? key, required this.userId}) : super(key: key);
 
   @override
   _ReviewsSectionState createState() => _ReviewsSectionState();
@@ -13,12 +16,9 @@ class _ReviewsSectionState extends State<ReviewsSection> {
   int _selectedTabIndex = 0;
 
   Stream<QuerySnapshot> getReviewsStream() {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    if (userId == null) return const Stream.empty();
-
     final reviewsCollection = FirebaseFirestore.instance
         .collection('users')
-        .doc(userId)
+        .doc(widget.userId) // Use userId from the widget
         .collection('reviews');
 
     if (_selectedTabIndex == 1) {
@@ -26,7 +26,9 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     } else if (_selectedTabIndex == 2) {
       return reviewsCollection.where('role', isEqualTo: 'buyer').snapshots();
     } else {
-      return reviewsCollection.snapshots();
+      return reviewsCollection
+          .orderBy('timestamp', descending: true)
+          .snapshots();
     }
   }
 
@@ -115,6 +117,13 @@ class ReviewCard extends StatelessWidget {
 
   const ReviewCard({Key? key, required this.review}) : super(key: key);
 
+  String formatTimestamp(Timestamp? timestamp) {
+    if (timestamp == null) return "Unknown date";
+    final dateTime = timestamp.toDate();
+    return DateFormat('y MMM d • h:mm a')
+        .format(dateTime); // Example: Dec 14 • 3:00 PM
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -179,6 +188,14 @@ class ReviewCard extends StatelessWidget {
                   color: Colors.grey,
                   fontStyle: FontStyle.italic,
                 ),
+              ),
+            ),
+            const SizedBox(height: 5),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                formatTimestamp(review['timestamp'] as Timestamp?),
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
             ),
           ],
