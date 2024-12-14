@@ -544,8 +544,7 @@ class _AccountInfoState extends State<AccountInfo> {
                           Tab(text: 'About'),
                         ],
                       ),
-                      SizedBox(
-                        height: 500, // Limit height for scrolling
+                      Expanded(
                         child: TabBarView(
                           children: [
                             const AllProductPage(),
