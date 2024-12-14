@@ -535,25 +535,33 @@ class _AccountInfoState extends State<AccountInfo> {
                 // Tab Section
                 DefaultTabController(
                   length: 3,
-                  child: Column(
-                    children: [
-                      const TabBar(
-                        tabs: [
-                          Tab(text: 'Listing'),
-                          Tab(text: 'Review'),
-                          Tab(text: 'About'),
-                        ],
-                      ),
-                      Expanded(
-                        child: TabBarView(
-                          children: [
-                            const AllProductPage(),
-                            const ReviewsSection(),
-                            const Center(child: Text('About Section')),
+                  child: SingleChildScrollView(
+                    // Allow scrolling for the entire page
+                    child: Column(
+                      crossAxisAlignment:
+                          CrossAxisAlignment.stretch, // Ensures full width
+                      children: [
+                        const TabBar(
+                          tabs: [
+                            Tab(text: 'Listing'),
+                            Tab(text: 'Review'),
+                            Tab(text: 'About'),
                           ],
                         ),
-                      ),
-                    ],
+                        Container(
+                          // Provide fixed height for TabBarView
+                          height: MediaQuery.of(context).size.height *
+                              0.7, // Adjust height
+                          child: TabBarView(
+                            children: [
+                              const AllProductPage(),
+                              const ReviewsSection(),
+                              const Center(child: Text('About Section')),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
