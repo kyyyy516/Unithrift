@@ -23,8 +23,45 @@ class _HomepageState extends State<Homepage> {
     });
   }
 
-  signOut() async {
+  /*signOut() async {
     await FirebaseAuth.instance.signOut();
+  }*/
+
+  void signOut() {//yy
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Logout'),
+          content: const Text('Are you sure you want to log out?'),
+          actions: [
+            TextButton(
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: const Color(0xFF808569),
+                ),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text(
+                'Logout',
+                style: TextStyle(
+                  color: const Color(0xFF808569),
+                ),
+              ),
+              onPressed: () async {
+                await FirebaseAuth.instance.signOut();
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
