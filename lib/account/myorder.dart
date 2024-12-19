@@ -429,7 +429,7 @@ class _MyOrdersState extends State<MyOrders> {
 
       // Add review to the seller's reviews collection
       final sellerReviewsRef =
-          db.collection('users').doc(sellerId).collection('reviews');
+          db.collection('users').doc(sellerId).collection('reviewsglobal');//yy 原本是reviews only
       await sellerReviewsRef.add(reviewData);
 
       // Update the seller's average rating
@@ -446,7 +446,7 @@ class _MyOrdersState extends State<MyOrders> {
       });
 
       // If the product type is "rental" or "service," add the review to the product reviews collection
-      if (data['type'] == 'rental' || data['type'] == 'service') {
+      if (data['type'] == 'rental' || data['type'] == 'service'|| data['type'] == 'feature' ) {//yy 加了一个feature
         final productReviewsRef = db
             .collection('users')
             .doc(sellerId)

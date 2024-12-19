@@ -36,6 +36,13 @@ class _FeaturePageState extends State<FeaturePage> {
     });
   }
 
+  String truncateName(String name) {
+    const maxLength = 15;
+    return name.length > maxLength
+        ? '${name.substring(0, maxLength)}...'
+        : name;
+  }
+
   Stream<List<Map<String, dynamic>>> getFeatureProducts() {
     return FirebaseFirestore.instance
         .collection('users')
@@ -373,7 +380,7 @@ class _FeaturePageState extends State<FeaturePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    product['name'] ?? 'No Name',
+                    truncateName(product['name'] ?? 'No Name'),
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,

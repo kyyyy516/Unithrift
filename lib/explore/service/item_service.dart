@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart' hide CarouselController;
 import 'package:unithrift/account/favourite_service.dart';
+import 'package:unithrift/account/view_user_profile.dart';
 import 'package:unithrift/chatscreen.dart';
 import 'package:unithrift/checkout/chekout.dart';
 import 'package:video_player/video_player.dart';
@@ -10,38 +11,64 @@ import 'package:chewie/chewie.dart';
 import 'dart:math' show min; // Add this import at the top
 import 'package:unithrift/firestore_service.dart';
 
+
 class ItemServicePage extends StatefulWidget {
   final Map<String, dynamic> product;
 
+
   const ItemServicePage({super.key, required this.product});
+
 
   @override
   State<ItemServicePage> createState() => _ItemServicePageState();
 }
 
+
 class _ItemServicePageState extends State<ItemServicePage> {
   int _currentImageIndex = 0;
   bool _isVideo = false;
-  List<Map<String, dynamic>> ratings = [];
-  double averageRating = 0;
+  List<Map<String, dynamic>> reviews = [];
+  double averagereview = 0;
   bool showAllComments = false;
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
-  double globalAverageRating = 0.0;
-  List<dynamic> globalRatings = [];
+  double globalAveragereview = 0.0;
+  List<dynamic> globalreviews = [];
   final FavoriteService _favoriteService = FavoriteService();
+
 
   DateTime? selectedDate;
   int quantity = 1;
 
+
   @override
   void initState() {
     super.initState();
-    _fetchRatings();
+    _fetchreviews();
     _initializeVideo();
     _initializeMediaContent();
-    fetchGlobalSellerRatings();
+    fetchGlobalSellerreviews();
+    fetchSellerProfile();
   }
+
+
+  String? sellerProfileImage;
+
+
+  Future<void> fetchSellerProfile() async {
+    final sellerDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.product['userId'])
+        .get();
+
+
+    if (mounted && sellerDoc.exists) {
+      setState(() {
+        sellerProfileImage = sellerDoc.data()?['profileImage'];
+      });
+    }
+  }
+
 
   Future<void> _initializeMediaContent() async {
     // Reset state
@@ -82,6 +109,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
     }
   }
 
+
   String? _findFirstVideoUrl() {
     final urls = [
       widget.product['imageUrl1'],
@@ -93,6 +121,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
       orElse: () => null,
     );
   }
+
 
   List<String> _getImageUrls() {
     List<String> images = [];
@@ -112,65 +141,73 @@ class _ItemServicePageState extends State<ItemServicePage> {
     return images;
   }
 
-  Future<void> fetchGlobalSellerRatings() async {
-    try {
-      final sellerId = widget.product['userId'];
-      List<double> allRatings = [];
-      List<dynamic> allComments = [];
 
-      // Get user document reference
-      DocumentReference userRef =
-          FirebaseFirestore.instance.collection('users').doc(sellerId);
+  Future<void> fetchGlobalSellerreviews() async {
+  try {
+    final sellerId = widget.product['userId'];
+    List<double> allReviews = [];
+    List<dynamic> allComments = [];
+    
+    // Get seller's global reviews from the correct collection
+    QuerySnapshot reviewsSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(sellerId)
+        .collection('reviewsglobal')
+        .orderBy('timestamp', descending: true)
+        .get();
 
-      // Get all products from user's products subcollection
-      QuerySnapshot productsSnapshot =
-          await userRef.collection('products').get();
-
-      // Process each product's ratings
-      for (var product in productsSnapshot.docs) {
-        Map<String, dynamic> productData =
-            product.data() as Map<String, dynamic>;
-
-        // Get ratings for each product regardless of type
-        QuerySnapshot ratingSnapshot = await userRef
-            .collection('products')
-            .doc(product.id)
-            .collection('rating')
-            .get();
-
-        // Process ratings
-        for (var rating in ratingSnapshot.docs) {
-          Map<String, dynamic> ratingData =
-              rating.data() as Map<String, dynamic>;
-          var ratingValue = ratingData['rating'];
-
-          if (ratingValue != null) {
-            double ratingDouble;
-            if (ratingValue is String) {
-              ratingDouble = double.parse(ratingValue);
-            } else {
-              ratingDouble = (ratingValue as num).toDouble();
-            }
-            allRatings.add(ratingDouble);
-            allComments.add(ratingData);
-          }
+    for (var reviewDoc in reviewsSnapshot.docs) {
+      Map<String, dynamic> reviewData = reviewDoc.data() as Map<String, dynamic>;
+      
+      // Parse rating value
+      double rating = 0.0;
+      var ratingValue = reviewData['rating'];
+      if (ratingValue != null) {
+        if (ratingValue is String) {
+          rating = double.tryParse(ratingValue) ?? 0.0;
+        } else if (ratingValue is num) {
+          rating = ratingValue.toDouble();
         }
       }
 
-      // Update state with combined ratings
+      // Only add valid reviews
+      if (rating > 0) {
+        allReviews.add(rating);
+        allComments.add({
+          'reviewerId': reviewData['reviewerId'] ?? '',
+          'reviewerName': reviewData['reviewerName'] ?? 'Anonymous',
+          'reviewText': reviewData['reviewText'] ?? '',
+          'rating': rating,
+          'timestamp': reviewData['timestamp'] ?? Timestamp.now(),
+          'productName': reviewData['productName'] ?? '',
+          'productPrice': (reviewData['productPrice'] ?? 0.0).toDouble(),
+          'role': reviewData['role'] ?? 'buyer',
+        });
+      }
+    }
+
+    if (mounted) {
       setState(() {
-        globalRatings = allComments;
-        globalAverageRating = allRatings.isNotEmpty
-            ? allRatings.reduce((a, b) => a + b) / allRatings.length
+        globalreviews = allComments;
+        globalAveragereview = allReviews.isNotEmpty
+            ? allReviews.reduce((a, b) => a + b) / allReviews.length
             : 0.0;
       });
-    } catch (e) {
-      print('Error fetching global ratings: $e');
+    }
+  } catch (e) {
+    print('Error fetching global reviews: $e');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading seller reviews: $e')),
+      );
     }
   }
+}
+
 
   String getTimeAgo(dynamic timestamp) {
     if (timestamp == null) return 'Recently';
+
 
     DateTime uploadTime;
     if (timestamp is Timestamp) {
@@ -181,7 +218,9 @@ class _ItemServicePageState extends State<ItemServicePage> {
       return 'Recently';
     }
 
+
     Duration difference = DateTime.now().difference(uploadTime);
+
 
     if (difference.inSeconds < 60) {
       return '${difference.inSeconds} seconds ago';
@@ -200,6 +239,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
     }
   }
 
+
   void _showServiceBottomSheet() async {
     // Check if item exists in cart first
     final currentUser = FirebaseAuth.instance.currentUser;
@@ -210,6 +250,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
           .collection('cart')
           .where('productID', isEqualTo: widget.product['productID'])
           .get();
+
 
       if (cartSnapshot.docs.isNotEmpty) {
         if (mounted) {
@@ -224,6 +265,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
       }
     }
 
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -233,8 +275,10 @@ class _ItemServicePageState extends State<ItemServicePage> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
-            double totalPrice =
-                quantity * double.parse(widget.product['price'].toString());
+            double totalPrice = quantity *
+                (double.tryParse(widget.product['price']?.toString() ?? '0') ??
+                    0.0);
+
 
             return Padding(
               padding: EdgeInsets.only(
@@ -289,6 +333,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                         ],
                       ),
                     ),
+
 
                     // Date Selection
                     Container(
@@ -362,7 +407,9 @@ class _ItemServicePageState extends State<ItemServicePage> {
                       ),
                     ),
 
+
                     const SizedBox(height: 20),
+
 
                     // Quantity Selection
                     Row(
@@ -392,7 +439,9 @@ class _ItemServicePageState extends State<ItemServicePage> {
                       ],
                     ),
 
+
                     const SizedBox(height: 20),
+
 
                     // Total Price
                     Row(
@@ -412,7 +461,9 @@ class _ItemServicePageState extends State<ItemServicePage> {
                       ],
                     ),
 
+
                     const SizedBox(height: 20),
+
 
                     // Confirm Button
                     ElevatedButton(
@@ -448,6 +499,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
     );
   }
 
+
 // Add this helper method to match ChatList's ID generation
   String _generateChatId(String userId1, String userId2) {
     return userId1.hashCode <= userId2.hashCode
@@ -455,10 +507,12 @@ class _ItemServicePageState extends State<ItemServicePage> {
         : '${userId2}_$userId1';
   }
 
+
   Future<void> _initializeVideo() async {
     if (widget.product['imageUrl1'] != null &&
         widget.product['imageUrl1'].toString().toLowerCase().endsWith('.mp4')) {
       setState(() => _isVideo = true);
+
 
       try {
         _videoController =
@@ -489,55 +543,76 @@ class _ItemServicePageState extends State<ItemServicePage> {
     }
   }
 
-  Future<void> _fetchRatings() async {
-    try {
-      // Use document ID directly
-      final sellerDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.product['userId'])
-          .get();
 
-      if (sellerDoc.exists) {
-        final ratingsSnapshot = await sellerDoc.reference
-            .collection('products')
-            .doc(widget.product['productID'])
-            .collection('rating')
-            .get();
+ Future<void> _fetchreviews() async {
+  try {
+    // Get reviews only for current product
+    final reviewsSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.product['userId'])
+        .collection('products')
+        .doc(widget.product['productID'])
+        .collection('reviews')
+        .orderBy('timestamp', descending: true)
+        .get();
 
-        final List<Map<String, dynamic>> ratingsList = [];
-        double totalRating = 0;
 
-        for (var doc in ratingsSnapshot.docs) {
-          final data = doc.data();
-          // Get buyer info using document ID
-          final userDoc = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(data['buyerID'])
-              .get();
+    List<Map<String, dynamic>> productReviews = [];
+    double totalRating = 0;
 
-          final userEmail =
-              userDoc.data()?['email'] ?? 'unknown@graduate.com.my';
-          final maskedEmail = '${userEmail[0]}****@${userEmail.split('@')[1]}';
 
-          ratingsList.add({
-            'buyerId': data['buyerID'],
-            'comment': data['comment'],
-            'rating': double.parse(data['rating'].toString()),
-            'createdAt': data['createdAt'],
-            'userEmail': maskedEmail,
-          });
-          totalRating += double.parse(data['rating'].toString());
+    for (var reviewDoc in reviewsSnapshot.docs) {
+      final data = reviewDoc.data();
+      
+      // Parse rating
+      double rating = 0.0;
+      var ratingValue = data['rating'];
+      if (ratingValue != null) {
+        if (ratingValue is String) {
+          rating = double.tryParse(ratingValue) ?? 0.0;
+        } else if (ratingValue is num) {
+          rating = ratingValue.toDouble();
         }
-
-        setState(() {
-          ratings = ratingsList;
-          averageRating = ratings.isEmpty ? 0 : totalRating / ratings.length;
-        });
       }
-    } catch (e) {
-      print('Error fetching ratings: $e');
+
+
+      if (rating > 0) {
+        Map<String, dynamic> review = {
+          'reviewerId': data['reviewerId'] ?? '',
+          'reviewerName': data['reviewerName'] ?? 'Anonymous',
+          'reviewText': data['reviewText'] ?? '',
+          'rating': rating,
+          'timestamp': data['timestamp'] ?? Timestamp.now(),
+          'productName': widget.product['name'] ?? '',
+          'productPrice': widget.product['price'] ?? 0.0,
+          'role': data['role'] ?? 'buyer',
+        };
+
+
+        productReviews.add(review);
+        totalRating += rating;
+      }
+    }
+
+
+    if (mounted) {
+      setState(() {
+        reviews = productReviews;
+        averagereview = reviews.isEmpty ? 0 : totalRating / reviews.length;
+      });
+    }
+  } catch (e) {
+    print('Error fetching product reviews: $e');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading product reviews: $e')),
+      );
     }
   }
+}
+
+
+
 
   String getValidImageUrl(Map<String, dynamic> product) {
     // List of possible image URLs in priority order
@@ -558,6 +633,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
     return 'https://via.placeholder.com/100';
   }
 
+
   void _addToCart(
       Map<String, dynamic> product, String type, DateTime? serviceDate) async {
     try {
@@ -569,6 +645,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
         return;
       }
 
+
       // Check if product already exists in cart
       final cartSnapshot = await FirebaseFirestore.instance
           .collection('users')
@@ -576,6 +653,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
           .collection('cart')
           .where('productID', isEqualTo: product['productID'])
           .get();
+
 
       if (cartSnapshot.docs.isNotEmpty) {
         if (mounted) {
@@ -586,12 +664,14 @@ class _ItemServicePageState extends State<ItemServicePage> {
         return;
       }
 
+
       // Format service date if provided
       String? formattedServiceDate;
       if (type == 'service' && serviceDate != null) {
         formattedServiceDate =
             '${serviceDate.day}/${serviceDate.month}/${serviceDate.year}';
       }
+
 
       // Add new item to cart
       final cartItem = {
@@ -613,11 +693,13 @@ class _ItemServicePageState extends State<ItemServicePage> {
         }
       };
 
+
       await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser.uid)
           .collection('cart')
           .add(cartItem);
+
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -637,8 +719,10 @@ class _ItemServicePageState extends State<ItemServicePage> {
     }
   }
 
+
   String _formatTimestamp(dynamic timestamp) {
     if (timestamp == null) return 'No date';
+
 
     // Handle both Timestamp and Map cases
     DateTime date;
@@ -651,28 +735,42 @@ class _ItemServicePageState extends State<ItemServicePage> {
       return 'Invalid date';
     }
 
+
     return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
 
-  Widget _buildSellerSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(left: 6, bottom: 4),
-          child: Text(
-            'Seller Info',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+
+ Widget _buildSellerSection() {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Padding(
+        padding: EdgeInsets.only(left: 6, bottom: 4),
+        child: Text(
+          'Seller Info',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
           ),
         ),
-        Container(
+      ),
+      GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => UserProfilePage(
+                userId: widget.product['userId'],
+              ),
+            ),
+          );
+        },
+        child: Container(
           margin: const EdgeInsets.all(6),
           padding: const EdgeInsets.all(18),
-          decoration: const BoxDecoration(
-            color: Color(0xFFD8DCC6),
+          decoration: BoxDecoration(
+            color: const Color(0xFFD8DCC6),
+            borderRadius: BorderRadius.circular(15),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -683,14 +781,21 @@ class _ItemServicePageState extends State<ItemServicePage> {
                   CircleAvatar(
                     backgroundColor: Colors.white,
                     radius: 50,
-                    child: Text(
-                      widget.product['username']?[0].toUpperCase() ?? 'S',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF808569),
-                      ),
-                    ),
+                    backgroundImage: sellerProfileImage != null &&
+                            sellerProfileImage!.isNotEmpty
+                        ? NetworkImage(sellerProfileImage!)
+                        : null,
+                    child: sellerProfileImage == null ||
+                            sellerProfileImage!.isEmpty
+                        ? Text(
+                            widget.product['username']?[0].toUpperCase() ?? 'S',
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF808569),
+                            ),
+                          )
+                        : null,
                   ),
                   const SizedBox(height: 10),
                   Text(
@@ -701,7 +806,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                     ),
                   ),
                   Text(
-                    '${globalAverageRating.toStringAsFixed(1)}-Star Seller',
+                    '${globalAveragereview.toStringAsFixed(1)}-Star Seller', // Updated to use globalAveragereview
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.normal,
@@ -714,7 +819,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   const Text(
-                    'Rating',
+                    'Overall Rating',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.black54,
@@ -724,7 +829,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        globalAverageRating.toStringAsFixed(1),
+                        globalAveragereview.toStringAsFixed(1), // Updated to use globalAveragereview
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -738,10 +843,11 @@ class _ItemServicePageState extends State<ItemServicePage> {
                     ],
                   ),
                   const SizedBox(
-                      width: 120, // Increased width
-                      child: Divider(thickness: 1, color: Colors.black38)),
+                    width: 120,
+                    child: Divider(thickness: 1, color: Colors.black38),
+                  ),
                   const Text(
-                    'Reviews',
+                    'Overall Review',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.black54,
@@ -751,7 +857,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '${globalRatings.length}',
+                        '${globalreviews.length}', // Updated to use globalreviews
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -767,8 +873,9 @@ class _ItemServicePageState extends State<ItemServicePage> {
                     ],
                   ),
                   const SizedBox(
-                      width: 120, // Increased width
-                      child: Divider(thickness: 1, color: Colors.black38)),
+                    width: 120,
+                    child: Divider(thickness: 1, color: Colors.black38),
+                  ),
                   const Text(
                     'Sell For',
                     style: TextStyle(
@@ -800,11 +907,12 @@ class _ItemServicePageState extends State<ItemServicePage> {
             ],
           ),
         ),
-      ],
-    );
-  }
+      ),
+    ],
+  );}
 
-  Widget _buildRatingSection() {
+
+  Widget _buildreviewSection() {
     return Container(
       margin: const EdgeInsets.all(6),
       padding: const EdgeInsets.all(15),
@@ -822,7 +930,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Overall Rating',
+                      'Product Review',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -833,7 +941,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                     Row(
                       children: [
                         Text(
-                          averageRating.toStringAsFixed(1),
+                          averagereview.toStringAsFixed(1),
                           style: const TextStyle(
                             fontSize: 25,
                             fontWeight: FontWeight.bold,
@@ -843,7 +951,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                         Row(
                           children: List.generate(5, (index) {
                             return Icon(
-                              index < averageRating
+                              index < averagereview
                                   ? Icons.star
                                   : Icons.star_border,
                               color: const Color(0xFF808569),
@@ -860,7 +968,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '${ratings.length} Reviews',
+                    '${reviews.length} Reviews',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
@@ -872,14 +980,16 @@ class _ItemServicePageState extends State<ItemServicePage> {
             ],
           ),
           const Divider(height: 40, thickness: 1),
-          // User Comments Section
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount:
-                showAllComments ? ratings.length : min(1, ratings.length),
+                showAllComments ? reviews.length : min(1, reviews.length),
             itemBuilder: (context, index) {
-              final rating = ratings[index];
+              final review = reviews[index];
+              final reviewerName = review['reviewerName'] ?? 'Anonymous';
+
+
               return Container(
                 margin: const EdgeInsets.only(bottom: 24),
                 padding: const EdgeInsets.all(16),
@@ -897,7 +1007,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                           backgroundColor: const Color(0xFF808569),
                           radius: 22,
                           child: Text(
-                            rating['userEmail'][0].toUpperCase(),
+                            reviewerName[0].toUpperCase(),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 15,
@@ -911,7 +1021,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                rating['userEmail'],
+                                reviewerName,
                                 style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.bold,
@@ -919,7 +1029,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                _formatTimestamp(rating['createdAt']),
+                                _formatTimestamp(review['timestamp']),
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey[600],
@@ -935,7 +1045,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                       children: List.generate(
                         5,
                         (index) => Icon(
-                          index < rating['rating']
+                          index < (review['rating'] ?? 0)
                               ? Icons.star
                               : Icons.star_border,
                           color: const Color(0xFF808569),
@@ -945,7 +1055,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      rating['comment'],
+                      review['reviewText'] ?? '',
                       style: const TextStyle(
                         fontSize: 13,
                         height: 1.5,
@@ -956,7 +1066,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
               );
             },
           ),
-          if (ratings.length > 1)
+          if (reviews.length > 1)
             Center(
               child: TextButton(
                 onPressed: () {
@@ -973,7 +1083,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                 child: Text(
                   showAllComments
                       ? 'Show Less'
-                      : 'View All ${ratings.length} Reviews',
+                      : 'View All ${reviews.length} Reviews',
                   style: const TextStyle(
                     color: Color(0xFF808569),
                     fontWeight: FontWeight.bold,
@@ -987,6 +1097,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
     );
   }
 
+
   void _showBuyNowBottomSheet() async {
     showModalBottomSheet(
       context: context,
@@ -999,6 +1110,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
           builder: (context, setState) {
             double totalPrice =
                 quantity * double.parse(widget.product['price'].toString());
+
 
             return Padding(
               padding: EdgeInsets.only(
@@ -1055,6 +1167,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                       ),
                     ),
 
+
                     // Date Selection
                     Container(
                       decoration: BoxDecoration(
@@ -1127,7 +1240,9 @@ class _ItemServicePageState extends State<ItemServicePage> {
                       ),
                     ),
 
+
                     const SizedBox(height: 20),
+
 
                     // Quantity Selection
                     Row(
@@ -1157,7 +1272,9 @@ class _ItemServicePageState extends State<ItemServicePage> {
                       ],
                     ),
 
+
                     const SizedBox(height: 20),
+
 
                     // Total Price
                     Row(
@@ -1177,10 +1294,10 @@ class _ItemServicePageState extends State<ItemServicePage> {
                       ],
                     ),
 
-                    const SizedBox(height: 20),
-                    // ... Other UI elements same as _showServiceBottomSheet ...
 
-                    // Change only the button at the bottom
+                    const SizedBox(height: 20),
+
+
                     ElevatedButton(
                       onPressed: selectedDate != null
                           ? () {
@@ -1233,6 +1350,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
     );
   }
 
+
   @override
   Widget build(BuildContext context) {
     List<String> images = [];
@@ -1250,8 +1368,10 @@ class _ItemServicePageState extends State<ItemServicePage> {
       images.add(widget.product['imageUrl3']);
     }
 
+
     images.removeWhere(
         (image) => image == 'https://via.placeholder.com/50' || image.isEmpty);
+
 
     return Scaffold(
       appBar: AppBar(
@@ -1307,6 +1427,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                           ),
                         ],
 
+
                         // Toggle button for video/images
                         if (_videoController != null &&
                             _getImageUrls().isNotEmpty)
@@ -1336,6 +1457,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                   )
                 ],
 
+
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -1357,6 +1479,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                           color: Colors.grey,
                         ),
                       ),
+
 
                       const SizedBox(height: 5),
                       Text(
@@ -1398,6 +1521,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                         ],
                       ),
 
+
                       const SizedBox(height: 25),
                       RichText(
                         text: TextSpan(
@@ -1421,6 +1545,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                         ),
                       ),
 
+
                       const SizedBox(height: 24),
                       RichText(
                         text: TextSpan(
@@ -1443,9 +1568,9 @@ class _ItemServicePageState extends State<ItemServicePage> {
                           ],
                         ),
                       ),
-                      // Rating Section
+                      // review Section
                       const SizedBox(height: 30),
-                      _buildRatingSection(),
+                      _buildreviewSection(),
                       const Divider(
                         height: 20,
                         thickness: 1,
@@ -1486,6 +1611,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                       builder: (context, snapshot) {
                         final isFavorited = snapshot.data ?? false;
 
+
                         return IconButton(
                           icon: Icon(
                             isFavorited
@@ -1518,11 +1644,13 @@ class _ItemServicePageState extends State<ItemServicePage> {
                         final chatId =
                             _generateChatId(currentUser.uid, sellerUserId);
 
+
                         // Check if the chat room exists
                         final chatDoc = await FirebaseFirestore.instance
                             .collection('chats')
                             .doc(chatId)
                             .get();
+
 
                         // Create or update the chat room with product-specific details
                         if (!chatDoc.exists) {
@@ -1552,12 +1680,14 @@ class _ItemServicePageState extends State<ItemServicePage> {
                           });
                         }
 
+
                         // Send a message indicating interest in the product
                         await FirestoreService().sendMessage(
                           chatId,
                           currentUser.uid,
                           "I'm interested in your product: ${widget.product['name']} (RM ${widget.product['price']}).",
                         );
+
 
                         // Navigate to the chat screen
                         Navigator.push(

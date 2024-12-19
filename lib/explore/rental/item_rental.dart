@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart' hide CarouselController;
 import 'package:unithrift/account/favourite_service.dart';
+import 'package:unithrift/account/view_user_profile.dart';
 import 'package:unithrift/chatscreen.dart';
 import 'package:unithrift/checkout/chekout.dart';
 import 'package:video_player/video_player.dart';
@@ -22,13 +23,13 @@ class ItemRentalPage extends StatefulWidget {
 class _ItemRentalPageState extends State<ItemRentalPage> {
   int _currentImageIndex = 0;
   bool _isVideo = false;
-  List<Map<String, dynamic>> ratings = [];
-  double averageRating = 0;
+  List<Map<String, dynamic>> reviews = [];
+  double averagereview = 0;
   bool showAllComments = false;
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
-  double globalAverageRating = 0.0;
-  List<dynamic> globalRatings = [];
+  double globalAveragereview = 0.0;
+  List<dynamic> globalreviews = [];
   final FavoriteService _favoriteService = FavoriteService();
 
   DateTime? _startDate;
@@ -37,68 +38,91 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
   @override
   void initState() {
     super.initState();
-    _fetchRatings();
+    _fetchreviews();
     _initializeVideo();
     _initializeMediaContent();
-    fetchGlobalSellerRatings();
+    fetchGlobalSellerreviews();
+        fetchSellerProfile();
+
   }
 
-  Future<void> fetchGlobalSellerRatings() async {
-    try {
-      final sellerId = widget.product['userId'];
-      List<double> allRatings = [];
-      List<dynamic> allComments = [];
+    String? sellerProfileImage;
 
-      // Get user document reference
-      DocumentReference userRef =
-          FirebaseFirestore.instance.collection('users').doc(sellerId);
+  Future<void> fetchSellerProfile() async {
+    final sellerDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.product['userId'])
+        .get();
 
-      // Get all products from user's products subcollection
-      QuerySnapshot productsSnapshot =
-          await userRef.collection('products').get();
+    if (mounted && sellerDoc.exists) {
+      setState(() {
+        sellerProfileImage = sellerDoc.data()?['profileImage'];
+      });
+    }
+  }
 
-      // Process each product's ratings
-      for (var product in productsSnapshot.docs) {
-        Map<String, dynamic> productData =
-            product.data() as Map<String, dynamic>;
+  Future<void> fetchGlobalSellerreviews() async {
+  try {
+    final sellerId = widget.product['userId'];
+    List<double> allReviews = [];
+    List<dynamic> allComments = [];
+    
+    // Get seller's global reviews from the correct collection
+    QuerySnapshot reviewsSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(sellerId)
+        .collection('reviewsglobal')
+        .orderBy('timestamp', descending: true)
+        .get();
 
-        // Get ratings for each product regardless of type
-        QuerySnapshot ratingSnapshot = await userRef
-            .collection('products')
-            .doc(product.id)
-            .collection('rating')
-            .get();
-
-        // Process ratings
-        for (var rating in ratingSnapshot.docs) {
-          Map<String, dynamic> ratingData =
-              rating.data() as Map<String, dynamic>;
-          var ratingValue = ratingData['rating'];
-
-          if (ratingValue != null) {
-            double ratingDouble;
-            if (ratingValue is String) {
-              ratingDouble = double.parse(ratingValue);
-            } else {
-              ratingDouble = (ratingValue as num).toDouble();
-            }
-            allRatings.add(ratingDouble);
-            allComments.add(ratingData);
-          }
+    for (var reviewDoc in reviewsSnapshot.docs) {
+      Map<String, dynamic> reviewData = reviewDoc.data() as Map<String, dynamic>;
+      
+      // Parse rating value
+      double rating = 0.0;
+      var ratingValue = reviewData['rating'];
+      if (ratingValue != null) {
+        if (ratingValue is String) {
+          rating = double.tryParse(ratingValue) ?? 0.0;
+        } else if (ratingValue is num) {
+          rating = ratingValue.toDouble();
         }
       }
 
-      // Update state with combined ratings
+      // Only add valid reviews
+      if (rating > 0) {
+        allReviews.add(rating);
+        allComments.add({
+          'reviewerId': reviewData['reviewerId'] ?? '',
+          'reviewerName': reviewData['reviewerName'] ?? 'Anonymous',
+          'reviewText': reviewData['reviewText'] ?? '',
+          'rating': rating,
+          'timestamp': reviewData['timestamp'] ?? Timestamp.now(),
+          'productName': reviewData['productName'] ?? '',
+          'productPrice': (reviewData['productPrice'] ?? 0.0).toDouble(),
+          'role': reviewData['role'] ?? 'buyer',
+        });
+      }
+    }
+
+    if (mounted) {
       setState(() {
-        globalRatings = allComments;
-        globalAverageRating = allRatings.isNotEmpty
-            ? allRatings.reduce((a, b) => a + b) / allRatings.length
+        globalreviews = allComments;
+        globalAveragereview = allReviews.isNotEmpty
+            ? allReviews.reduce((a, b) => a + b) / allReviews.length
             : 0.0;
       });
-    } catch (e) {
-      print('Error fetching global ratings: $e');
+    }
+  } catch (e) {
+    print('Error fetching global reviews: $e');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading seller reviews: $e')),
+      );
     }
   }
+}
+
 
 // Add this helper method to match ChatList's ID generation
   String _generateChatId(String userId1, String userId2) {
@@ -216,48 +240,63 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
     }
   }
 
-  Future<void> _fetchRatings() async {
+  Future<void> _fetchreviews() async {
     try {
-      final ratingsSnapshot = await FirebaseFirestore.instance
+      // Get reference to the product's reviews collection
+      final reviewsSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.product['userId'])
           .collection('products')
           .doc(widget.product['productID'])
-          .collection('rating')
+          .collection('reviews')
+          .orderBy('timestamp', descending: true)
           .get();
 
-      final List<Map<String, dynamic>> ratingsList = [];
-      double totalRating = 0;
+      final List<Map<String, dynamic>> reviewsList = [];
+      double totalreview = 0;
 
-      for (var doc in ratingsSnapshot.docs) {
+      for (var doc in reviewsSnapshot.docs) {
         final data = doc.data();
 
-        // Get buyer info
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(data['buyerID'])
-            .get();
+        if (data['rating'] != null) {
+          double reviewValue = 0.0;
 
-        final userEmail = userDoc.data()?['email'] ?? 'unknown@graduate.com.my';
-        final maskedEmail = '${userEmail[0]}****@${userEmail.split('@')[1]}';
+          // Handle different rating types
+          if (data['rating'] is String) {
+            reviewValue = double.tryParse(data['rating']) ?? 0.0;
+          } else if (data['rating'] is num) {
+            reviewValue = (data['rating'] as num).toDouble();
+          }
 
-        ratingsList.add({
-          'buyerId': data['buyerID'],
-          'comment': data['comment'],
-          'rating': double.parse(data['rating'].toString()),
-          'createdAt': data['createdAt'],
-          'userEmail': maskedEmail,
-        });
+          if (reviewValue > 0) {
+            Map<String, dynamic> review = {
+              'reviewerId': data['reviewerId'] ?? '',
+              'reviewerName': data['reviewerName'] ?? 'Anonymous',
+              'reviewText': data['reviewText'] ?? '',
+              'rating': reviewValue,
+              'timestamp': data['timestamp'] ?? Timestamp.now(),
+              'productName': data['productName'] ?? '',
+              'productPrice': (data['productPrice'] ?? 0.0).toDouble(),
+              'role': data['role'] ?? 'buyer',
+            };
 
-        totalRating += double.parse(data['rating'].toString());
+            reviewsList.add(review);
+            totalreview += reviewValue;
+          }
+        }
       }
 
       setState(() {
-        ratings = ratingsList;
-        averageRating = ratings.isEmpty ? 0 : totalRating / ratings.length;
+        reviews = reviewsList;
+        averagereview = reviews.isEmpty ? 0 : totalreview / reviews.length;
       });
     } catch (e) {
-      print('Error fetching ratings: $e');
+      print('Error fetching reviews: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading reviews: $e')),
+        );
+      }
     }
   }
 
@@ -893,25 +932,37 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
     );
   }
 
-  Widget _buildSellerSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(left: 6, bottom: 4),
-          child: Text(
-            'Seller Info',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+   Widget _buildSellerSection() {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Padding(
+        padding: EdgeInsets.only(left: 6, bottom: 4),
+        child: Text(
+          'Seller Info',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
           ),
         ),
-        Container(
+      ),
+      GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => UserProfilePage(
+                userId: widget.product['userId'],
+              ),
+            ),
+          );
+        },
+        child: Container(
           margin: const EdgeInsets.all(6),
           padding: const EdgeInsets.all(18),
-          decoration: const BoxDecoration(
-            color: Color(0xFFD8DCC6),
+          decoration: BoxDecoration(
+            color: const Color(0xFFD8DCC6),
+            borderRadius: BorderRadius.circular(15),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -922,14 +973,21 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                   CircleAvatar(
                     backgroundColor: Colors.white,
                     radius: 50,
-                    child: Text(
-                      widget.product['username']?[0].toUpperCase() ?? 'S',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF808569),
-                      ),
-                    ),
+                    backgroundImage: sellerProfileImage != null &&
+                            sellerProfileImage!.isNotEmpty
+                        ? NetworkImage(sellerProfileImage!)
+                        : null,
+                    child: sellerProfileImage == null ||
+                            sellerProfileImage!.isEmpty
+                        ? Text(
+                            widget.product['username']?[0].toUpperCase() ?? 'S',
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF808569),
+                            ),
+                          )
+                        : null,
                   ),
                   const SizedBox(height: 10),
                   Text(
@@ -940,7 +998,7 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                     ),
                   ),
                   Text(
-                    '${globalAverageRating.toStringAsFixed(1)}-Star Seller',
+                    '${globalAveragereview.toStringAsFixed(1)}-Star Seller', // Updated to use globalAveragereview
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.normal,
@@ -953,7 +1011,7 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   const Text(
-                    'Rating',
+                    'Overall Rating',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.black54,
@@ -963,7 +1021,7 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        globalAverageRating.toStringAsFixed(1),
+                        globalAveragereview.toStringAsFixed(1), // Updated to use globalAveragereview
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -977,10 +1035,11 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                     ],
                   ),
                   const SizedBox(
-                      width: 120, // Increased width
-                      child: Divider(thickness: 1, color: Colors.black38)),
+                    width: 120,
+                    child: Divider(thickness: 1, color: Colors.black38),
+                  ),
                   const Text(
-                    'Reviews',
+                    'Overall Review',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.black54,
@@ -990,7 +1049,7 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '${globalRatings.length}',
+                        '${globalreviews.length}', // Updated to use globalreviews
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -1006,8 +1065,9 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                     ],
                   ),
                   const SizedBox(
-                      width: 120, // Increased width
-                      child: Divider(thickness: 1, color: Colors.black38)),
+                    width: 120,
+                    child: Divider(thickness: 1, color: Colors.black38),
+                  ),
                   const Text(
                     'Sell For',
                     style: TextStyle(
@@ -1039,11 +1099,13 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
             ],
           ),
         ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
 
-  Widget _buildRatingSection() {
+
+  Widget _buildreviewSection() {
     return Container(
       margin: const EdgeInsets.all(6),
       padding: const EdgeInsets.all(15),
@@ -1061,7 +1123,7 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Overall Rating',
+                      'Product Review',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -1072,7 +1134,7 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                     Row(
                       children: [
                         Text(
-                          averageRating.toStringAsFixed(1),
+                          averagereview.toStringAsFixed(1),
                           style: const TextStyle(
                             fontSize: 25,
                             fontWeight: FontWeight.bold,
@@ -1082,7 +1144,7 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                         Row(
                           children: List.generate(5, (index) {
                             return Icon(
-                              index < averageRating
+                              index < averagereview
                                   ? Icons.star
                                   : Icons.star_border,
                               color: const Color(0xFF808569),
@@ -1099,7 +1161,7 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '${ratings.length} Reviews',
+                    '${reviews.length} Reviews',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
@@ -1111,14 +1173,15 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
             ],
           ),
           const Divider(height: 40, thickness: 1),
-          // User Comments Section
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount:
-                showAllComments ? ratings.length : min(1, ratings.length),
+                showAllComments ? reviews.length : min(1, reviews.length),
             itemBuilder: (context, index) {
-              final rating = ratings[index];
+              final review = reviews[index];
+              final reviewerName = review['reviewerName'] ?? 'Anonymous';
+
               return Container(
                 margin: const EdgeInsets.only(bottom: 24),
                 padding: const EdgeInsets.all(16),
@@ -1136,7 +1199,7 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                           backgroundColor: const Color(0xFF808569),
                           radius: 22,
                           child: Text(
-                            rating['userEmail'][0].toUpperCase(),
+                            reviewerName[0].toUpperCase(),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 15,
@@ -1150,7 +1213,7 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                rating['userEmail'],
+                                reviewerName,
                                 style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.bold,
@@ -1158,7 +1221,7 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                _formatTimestamp(rating['createdAt']),
+                                _formatTimestamp(review['timestamp']),
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey[600],
@@ -1174,7 +1237,7 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                       children: List.generate(
                         5,
                         (index) => Icon(
-                          index < rating['rating']
+                          index < (review['rating'] ?? 0)
                               ? Icons.star
                               : Icons.star_border,
                           color: const Color(0xFF808569),
@@ -1184,7 +1247,7 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      rating['comment'],
+                      review['reviewText'] ?? '',
                       style: const TextStyle(
                         fontSize: 13,
                         height: 1.5,
@@ -1195,7 +1258,7 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
               );
             },
           ),
-          if (ratings.length > 1)
+          if (reviews.length > 1)
             Center(
               child: TextButton(
                 onPressed: () {
@@ -1212,7 +1275,7 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                 child: Text(
                   showAllComments
                       ? 'Show Less'
-                      : 'View All ${ratings.length} Reviews',
+                      : 'View All ${reviews.length} Reviews',
                   style: const TextStyle(
                     color: Color(0xFF808569),
                     fontWeight: FontWeight.bold,
@@ -1472,9 +1535,9 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                           ],
                         ),
                       ),
-                      // Rating Section
+                      // review Section
                       const SizedBox(height: 30),
-                      _buildRatingSection(),
+                      _buildreviewSection(),
                       const Divider(
                         height: 20,
                         thickness: 1,

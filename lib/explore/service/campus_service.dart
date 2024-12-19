@@ -148,6 +148,14 @@ class _CampusServiceState extends State<CampusService> {
     );
   }
 
+  String truncateName(String name) {
+  const maxLength = 15;
+  return name.length > maxLength
+      ? '${name.substring(0, maxLength)}...'
+      : name;
+}
+
+
   void _showDateRangePicker() async {
     DateTimeRange? picked = await showDateRangePicker(
       context: context,
@@ -559,7 +567,7 @@ class _CampusServiceState extends State<CampusService> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    product['name'] ?? 'No Name',
+                    truncateName(product['name'] ?? 'No Name'),
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,

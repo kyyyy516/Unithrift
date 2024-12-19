@@ -123,15 +123,35 @@ class OrderDetailsPage extends StatelessWidget {
     );
   }
 
+  String? getFirstValidImage(Map<String, dynamic> product) {//yy
+    List<dynamic> images = [
+      product['imageUrl1'],
+      product['imageUrl2'],
+      product['imageUrl3'],
+      product['imageUrl4'],
+      product['imageUrl5'],
+    ]
+        .where((url) =>
+            url != null &&
+            url != 'https://via.placeholder.com/50' &&
+            !url.toLowerCase().endsWith('.mp4'))
+        .toList();
+
+    return images.isNotEmpty ? images[0] : null;
+  }
+
   Widget _buildProductInfo() {
     return ListTile(
       leading: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: Image.network(
-          orderData['imageUrl1'] ?? 'https://via.placeholder.com/100',
-          width: 80,
-          height: 80,
+        child: Image.network(//yy
+          getFirstValidImage(orderData) ?? 'https://via.placeholder.com/200',
           fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return const Center(
+              child: Icon(Icons.image_not_supported, size: 40),
+            );
+          },
         ),
       ),
       title: Text(

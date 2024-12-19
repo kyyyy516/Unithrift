@@ -175,6 +175,24 @@ class _MySalesPageState extends State<MySalesPage> {
     }
   }
 
+  String? getFirstValidImage(Map<String, dynamic> product) {
+    //yy
+    List<dynamic> images = [
+      product['imageUrl1'],
+      product['imageUrl2'],
+      product['imageUrl3'],
+      product['imageUrl4'],
+      product['imageUrl5'],
+    ]
+        .where((url) =>
+            url != null &&
+            url != 'https://via.placeholder.com/50' &&
+            !url.toLowerCase().endsWith('.mp4'))
+        .toList();
+
+    return images.isNotEmpty ? images[0] : null;
+  }
+
   void _promptForReview(
     String orderId,
     String reviewerId,
@@ -836,9 +854,9 @@ class _MySalesPageState extends State<MySalesPage> {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    sale['imageUrl1'] ?? 'https://via.placeholder.com/100',
-                    width: 80,
+                  child: Image.network(//yy
+                    getFirstValidImage(sale) ??
+                        'https://via.placeholder.com/100',
                     height: 80,
                     fit: BoxFit.cover,
                   ),
