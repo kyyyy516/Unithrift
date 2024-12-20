@@ -11,18 +11,14 @@ import 'package:chewie/chewie.dart';
 import 'dart:math' show min; // Add this import at the top
 import 'package:unithrift/firestore_service.dart';
 
-
 class ItemServicePage extends StatefulWidget {
   final Map<String, dynamic> product;
 
-
   const ItemServicePage({super.key, required this.product});
-
 
   @override
   State<ItemServicePage> createState() => _ItemServicePageState();
 }
-
 
 class _ItemServicePageState extends State<ItemServicePage> {
   int _currentImageIndex = 0;
@@ -36,10 +32,8 @@ class _ItemServicePageState extends State<ItemServicePage> {
   List<dynamic> globalreviews = [];
   final FavoriteService _favoriteService = FavoriteService();
 
-
   DateTime? selectedDate;
   int quantity = 1;
-
 
   @override
   void initState() {
@@ -51,9 +45,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
     fetchSellerProfile();
   }
 
-
   String? sellerProfileImage;
-
 
   Future<void> fetchSellerProfile() async {
     final sellerDoc = await FirebaseFirestore.instance
@@ -61,14 +53,12 @@ class _ItemServicePageState extends State<ItemServicePage> {
         .doc(widget.product['userId'])
         .get();
 
-
     if (mounted && sellerDoc.exists) {
       setState(() {
         sellerProfileImage = sellerDoc.data()?['profileImage'];
       });
     }
   }
-
 
   Future<void> _initializeMediaContent() async {
     // Reset state
@@ -109,7 +99,6 @@ class _ItemServicePageState extends State<ItemServicePage> {
     }
   }
 
-
   String? _findFirstVideoUrl() {
     final urls = [
       widget.product['imageUrl1'],
@@ -121,7 +110,6 @@ class _ItemServicePageState extends State<ItemServicePage> {
       orElse: () => null,
     );
   }
-
 
   List<String> _getImageUrls() {
     List<String> images = [];
@@ -141,73 +129,71 @@ class _ItemServicePageState extends State<ItemServicePage> {
     return images;
   }
 
-
   Future<void> fetchGlobalSellerreviews() async {
-  try {
-    final sellerId = widget.product['userId'];
-    List<double> allReviews = [];
-    List<dynamic> allComments = [];
-    
-    // Get seller's global reviews from the correct collection
-    QuerySnapshot reviewsSnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(sellerId)
-        .collection('reviewsglobal')
-        .orderBy('timestamp', descending: true)
-        .get();
+    try {
+      final sellerId = widget.product['userId'];
+      List<double> allReviews = [];
+      List<dynamic> allComments = [];
 
-    for (var reviewDoc in reviewsSnapshot.docs) {
-      Map<String, dynamic> reviewData = reviewDoc.data() as Map<String, dynamic>;
-      
-      // Parse rating value
-      double rating = 0.0;
-      var ratingValue = reviewData['rating'];
-      if (ratingValue != null) {
-        if (ratingValue is String) {
-          rating = double.tryParse(ratingValue) ?? 0.0;
-        } else if (ratingValue is num) {
-          rating = ratingValue.toDouble();
+      // Get seller's global reviews from the correct collection
+      QuerySnapshot reviewsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(sellerId)
+          .collection('reviewsglobal')
+          .orderBy('timestamp', descending: true)
+          .get();
+
+      for (var reviewDoc in reviewsSnapshot.docs) {
+        Map<String, dynamic> reviewData =
+            reviewDoc.data() as Map<String, dynamic>;
+
+        // Parse rating value
+        double rating = 0.0;
+        var ratingValue = reviewData['rating'];
+        if (ratingValue != null) {
+          if (ratingValue is String) {
+            rating = double.tryParse(ratingValue) ?? 0.0;
+          } else if (ratingValue is num) {
+            rating = ratingValue.toDouble();
+          }
+        }
+
+        // Only add valid reviews
+        if (rating > 0) {
+          allReviews.add(rating);
+          allComments.add({
+            'reviewerId': reviewData['reviewerId'] ?? '',
+            'reviewerName': reviewData['reviewerName'] ?? 'Anonymous',
+            'reviewText': reviewData['reviewText'] ?? '',
+            'rating': rating,
+            'timestamp': reviewData['timestamp'] ?? Timestamp.now(),
+            'productName': reviewData['productName'] ?? '',
+            'productPrice': (reviewData['productPrice'] ?? 0.0).toDouble(),
+            'role': reviewData['role'] ?? 'buyer',
+          });
         }
       }
 
-      // Only add valid reviews
-      if (rating > 0) {
-        allReviews.add(rating);
-        allComments.add({
-          'reviewerId': reviewData['reviewerId'] ?? '',
-          'reviewerName': reviewData['reviewerName'] ?? 'Anonymous',
-          'reviewText': reviewData['reviewText'] ?? '',
-          'rating': rating,
-          'timestamp': reviewData['timestamp'] ?? Timestamp.now(),
-          'productName': reviewData['productName'] ?? '',
-          'productPrice': (reviewData['productPrice'] ?? 0.0).toDouble(),
-          'role': reviewData['role'] ?? 'buyer',
+      if (mounted) {
+        setState(() {
+          globalreviews = allComments;
+          globalAveragereview = allReviews.isNotEmpty
+              ? allReviews.reduce((a, b) => a + b) / allReviews.length
+              : 0.0;
         });
       }
-    }
-
-    if (mounted) {
-      setState(() {
-        globalreviews = allComments;
-        globalAveragereview = allReviews.isNotEmpty
-            ? allReviews.reduce((a, b) => a + b) / allReviews.length
-            : 0.0;
-      });
-    }
-  } catch (e) {
-    print('Error fetching global reviews: $e');
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading seller reviews: $e')),
-      );
+    } catch (e) {
+      print('Error fetching global reviews: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading seller reviews: $e')),
+        );
+      }
     }
   }
-}
-
 
   String getTimeAgo(dynamic timestamp) {
     if (timestamp == null) return 'Recently';
-
 
     DateTime uploadTime;
     if (timestamp is Timestamp) {
@@ -218,9 +204,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
       return 'Recently';
     }
 
-
     Duration difference = DateTime.now().difference(uploadTime);
-
 
     if (difference.inSeconds < 60) {
       return '${difference.inSeconds} seconds ago';
@@ -239,7 +223,6 @@ class _ItemServicePageState extends State<ItemServicePage> {
     }
   }
 
-
   void _showServiceBottomSheet() async {
     // Check if item exists in cart first
     final currentUser = FirebaseAuth.instance.currentUser;
@@ -250,7 +233,6 @@ class _ItemServicePageState extends State<ItemServicePage> {
           .collection('cart')
           .where('productID', isEqualTo: widget.product['productID'])
           .get();
-
 
       if (cartSnapshot.docs.isNotEmpty) {
         if (mounted) {
@@ -265,7 +247,6 @@ class _ItemServicePageState extends State<ItemServicePage> {
       }
     }
 
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -278,7 +259,6 @@ class _ItemServicePageState extends State<ItemServicePage> {
             double totalPrice = quantity *
                 (double.tryParse(widget.product['price']?.toString() ?? '0') ??
                     0.0);
-
 
             return Padding(
               padding: EdgeInsets.only(
@@ -333,7 +313,6 @@ class _ItemServicePageState extends State<ItemServicePage> {
                         ],
                       ),
                     ),
-
 
                     // Date Selection
                     Container(
@@ -407,9 +386,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                       ),
                     ),
 
-
                     const SizedBox(height: 20),
-
 
                     // Quantity Selection
                     Row(
@@ -439,9 +416,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                       ],
                     ),
 
-
                     const SizedBox(height: 20),
-
 
                     // Total Price
                     Row(
@@ -461,9 +436,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                       ],
                     ),
 
-
                     const SizedBox(height: 20),
-
 
                     // Confirm Button
                     ElevatedButton(
@@ -499,7 +472,6 @@ class _ItemServicePageState extends State<ItemServicePage> {
     );
   }
 
-
 // Add this helper method to match ChatList's ID generation
   String _generateChatId(String userId1, String userId2) {
     return userId1.hashCode <= userId2.hashCode
@@ -507,12 +479,10 @@ class _ItemServicePageState extends State<ItemServicePage> {
         : '${userId2}_$userId1';
   }
 
-
   Future<void> _initializeVideo() async {
     if (widget.product['imageUrl1'] != null &&
         widget.product['imageUrl1'].toString().toLowerCase().endsWith('.mp4')) {
       setState(() => _isVideo = true);
-
 
       try {
         _videoController =
@@ -543,76 +513,67 @@ class _ItemServicePageState extends State<ItemServicePage> {
     }
   }
 
+  Future<void> _fetchreviews() async {
+    try {
+      // Get reviews only for current product
+      final reviewsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.product['userId'])
+          .collection('products')
+          .doc(widget.product['productID'])
+          .collection('reviews')
+          .orderBy('timestamp', descending: true)
+          .get();
 
- Future<void> _fetchreviews() async {
-  try {
-    // Get reviews only for current product
-    final reviewsSnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.product['userId'])
-        .collection('products')
-        .doc(widget.product['productID'])
-        .collection('reviews')
-        .orderBy('timestamp', descending: true)
-        .get();
+      List<Map<String, dynamic>> productReviews = [];
+      double totalRating = 0;
 
+      for (var reviewDoc in reviewsSnapshot.docs) {
+        final data = reviewDoc.data();
 
-    List<Map<String, dynamic>> productReviews = [];
-    double totalRating = 0;
+        // Parse rating
+        double rating = 0.0;
+        var ratingValue = data['rating'];
+        if (ratingValue != null) {
+          if (ratingValue is String) {
+            rating = double.tryParse(ratingValue) ?? 0.0;
+          } else if (ratingValue is num) {
+            rating = ratingValue.toDouble();
+          }
+        }
 
+        if (rating > 0) {
+          Map<String, dynamic> review = {
+            'reviewerId': data['reviewerId'] ?? '',
+            'reviewerName': data['reviewerName'] ?? 'Anonymous',
+            'reviewText': data['reviewText'] ?? '',
+            'rating': rating,
+            'timestamp': data['timestamp'] ?? Timestamp.now(),
+            'productName': widget.product['name'] ?? '',
+            'productPrice': widget.product['price'] ?? 0.0,
+            'role': data['role'] ?? 'buyer',
+          };
 
-    for (var reviewDoc in reviewsSnapshot.docs) {
-      final data = reviewDoc.data();
-      
-      // Parse rating
-      double rating = 0.0;
-      var ratingValue = data['rating'];
-      if (ratingValue != null) {
-        if (ratingValue is String) {
-          rating = double.tryParse(ratingValue) ?? 0.0;
-        } else if (ratingValue is num) {
-          rating = ratingValue.toDouble();
+          productReviews.add(review);
+          totalRating += rating;
         }
       }
 
-
-      if (rating > 0) {
-        Map<String, dynamic> review = {
-          'reviewerId': data['reviewerId'] ?? '',
-          'reviewerName': data['reviewerName'] ?? 'Anonymous',
-          'reviewText': data['reviewText'] ?? '',
-          'rating': rating,
-          'timestamp': data['timestamp'] ?? Timestamp.now(),
-          'productName': widget.product['name'] ?? '',
-          'productPrice': widget.product['price'] ?? 0.0,
-          'role': data['role'] ?? 'buyer',
-        };
-
-
-        productReviews.add(review);
-        totalRating += rating;
+      if (mounted) {
+        setState(() {
+          reviews = productReviews;
+          averagereview = reviews.isEmpty ? 0 : totalRating / reviews.length;
+        });
+      }
+    } catch (e) {
+      print('Error fetching product reviews: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading product reviews: $e')),
+        );
       }
     }
-
-
-    if (mounted) {
-      setState(() {
-        reviews = productReviews;
-        averagereview = reviews.isEmpty ? 0 : totalRating / reviews.length;
-      });
-    }
-  } catch (e) {
-    print('Error fetching product reviews: $e');
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading product reviews: $e')),
-      );
-    }
   }
-}
-
-
-
 
   String getValidImageUrl(Map<String, dynamic> product) {
     // List of possible image URLs in priority order
@@ -633,7 +594,6 @@ class _ItemServicePageState extends State<ItemServicePage> {
     return 'https://via.placeholder.com/100';
   }
 
-
   void _addToCart(
       Map<String, dynamic> product, String type, DateTime? serviceDate) async {
     try {
@@ -645,7 +605,6 @@ class _ItemServicePageState extends State<ItemServicePage> {
         return;
       }
 
-
       // Check if product already exists in cart
       final cartSnapshot = await FirebaseFirestore.instance
           .collection('users')
@@ -653,7 +612,6 @@ class _ItemServicePageState extends State<ItemServicePage> {
           .collection('cart')
           .where('productID', isEqualTo: product['productID'])
           .get();
-
 
       if (cartSnapshot.docs.isNotEmpty) {
         if (mounted) {
@@ -664,14 +622,12 @@ class _ItemServicePageState extends State<ItemServicePage> {
         return;
       }
 
-
       // Format service date if provided
       String? formattedServiceDate;
       if (type == 'service' && serviceDate != null) {
         formattedServiceDate =
             '${serviceDate.day}/${serviceDate.month}/${serviceDate.year}';
       }
-
 
       // Add new item to cart
       final cartItem = {
@@ -693,13 +649,11 @@ class _ItemServicePageState extends State<ItemServicePage> {
         }
       };
 
-
       await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser.uid)
           .collection('cart')
           .add(cartItem);
-
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -719,10 +673,8 @@ class _ItemServicePageState extends State<ItemServicePage> {
     }
   }
 
-
   String _formatTimestamp(dynamic timestamp) {
     if (timestamp == null) return 'No date';
-
 
     // Handle both Timestamp and Map cases
     DateTime date;
@@ -735,182 +687,182 @@ class _ItemServicePageState extends State<ItemServicePage> {
       return 'Invalid date';
     }
 
-
     return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
 
-
- Widget _buildSellerSection() {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Padding(
-        padding: EdgeInsets.only(left: 6, bottom: 4),
-        child: Text(
-          'Seller Info',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-      GestureDetector(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => UserProfilePage(
-                userId: widget.product['userId'],
-              ),
+  Widget _buildSellerSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(left: 6, bottom: 4),
+          child: Text(
+            'Seller Info',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
             ),
-          );
-        },
-        child: Container(
-          margin: const EdgeInsets.all(6),
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: const Color(0xFFD8DCC6),
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(width: 20),
-              Column(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: Colors.white,
-                    radius: 50,
-                    backgroundImage: sellerProfileImage != null &&
-                            sellerProfileImage!.isNotEmpty
-                        ? NetworkImage(sellerProfileImage!)
-                        : null,
-                    child: sellerProfileImage == null ||
-                            sellerProfileImage!.isEmpty
-                        ? Text(
-                            widget.product['username']?[0].toUpperCase() ?? 'S',
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF808569),
-                            ),
-                          )
-                        : null,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    widget.product['username'] ?? 'Seller Name',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    '${globalAveragereview.toStringAsFixed(1)}-Star Seller', // Updated to use globalAveragereview
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.normal,
-                    ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  const Text(
-                    'Overall Rating',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.black54,
-                    ),
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        globalAveragereview.toStringAsFixed(1), // Updated to use globalAveragereview
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Icon(
-                        Icons.star,
-                        size: 18,
-                        color: Color(0xFF808569),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(
-                    width: 120,
-                    child: Divider(thickness: 1, color: Colors.black38),
-                  ),
-                  const Text(
-                    'Overall Review',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.black54,
-                    ),
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${globalreviews.length}', // Updated to use globalreviews
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Text(
-                        ' Comments',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(
-                    width: 120,
-                    child: Divider(thickness: 1, color: Colors.black38),
-                  ),
-                  const Text(
-                    'Sell For',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.black54,
-                    ),
-                  ),
-                  const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '3',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        ' years',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              )
-            ],
           ),
         ),
-      ),
-    ],
-  );}
-
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => UserProfilePage(
+                  userId: widget.product['userId'],
+                ),
+              ),
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.all(6),
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: const Color(0xFFD8DCC6),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(width: 20),
+                Column(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: Colors.white,
+                      radius: 50,
+                      backgroundImage: sellerProfileImage != null &&
+                              sellerProfileImage!.isNotEmpty
+                          ? NetworkImage(sellerProfileImage!)
+                          : null,
+                      child: sellerProfileImage == null ||
+                              sellerProfileImage!.isEmpty
+                          ? Text(
+                              widget.product['username']?[0].toUpperCase() ??
+                                  'S',
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF808569),
+                              ),
+                            )
+                          : null,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      widget.product['username'] ?? 'Seller Name',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      '${globalAveragereview.toStringAsFixed(1)}-Star Seller', // Updated to use globalAveragereview
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Text(
+                      'Overall Rating',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          globalAveragereview.toStringAsFixed(
+                              1), // Updated to use globalAveragereview
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Icon(
+                          Icons.star,
+                          size: 18,
+                          color: Color(0xFF808569),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(
+                      width: 120,
+                      child: Divider(thickness: 1, color: Colors.black38),
+                    ),
+                    const Text(
+                      'Overall Review',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${globalreviews.length}', // Updated to use globalreviews
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Text(
+                          ' Comments',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(
+                      width: 120,
+                      child: Divider(thickness: 1, color: Colors.black38),
+                    ),
+                    const Text(
+                      'Sell For',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
+                    const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '3',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          ' years',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                )
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _buildreviewSection() {
     return Container(
@@ -988,81 +940,102 @@ class _ItemServicePageState extends State<ItemServicePage> {
             itemBuilder: (context, index) {
               final review = reviews[index];
               final reviewerName = review['reviewerName'] ?? 'Anonymous';
+              final reviewerId = review['reviewerId'];
 
+              return FutureBuilder<DocumentSnapshot>(
+                future: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(reviewerId)
+                    .get(),
+                builder: (context, snapshot) {
+                  String? profileImageUrl;
 
-              return Container(
-                margin: const EdgeInsets.only(bottom: 24),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.withOpacity(0.2)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                  if (snapshot.connectionState == ConnectionState.done &&
+                      snapshot.hasData &&
+                      snapshot.data!.exists) {
+                    profileImageUrl = snapshot.data!.get('profileImage');
+                  }
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 24),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        CircleAvatar(
-                          backgroundColor: const Color(0xFF808569),
-                          radius: 22,
-                          child: Text(
-                            reviewerName[0].toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 22,
+                              backgroundImage: profileImageUrl != null
+                                  ? NetworkImage(profileImageUrl)
+                                  : null,
+                              backgroundColor: const Color(0xFF808569),
+                              child: profileImageUrl == null
+                                  ? Text(
+                                      reviewerName[0].toUpperCase(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    reviewerName,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _formatTimestamp(review['timestamp']),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: List.generate(
+                            5,
+                            (index) => Icon(
+                              index < (review['rating'] ?? 0)
+                                  ? Icons.star
+                                  : Icons.star_border,
+                              color: const Color(0xFF808569),
+                              size: 18,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                reviewerName,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _formatTimestamp(review['timestamp']),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ],
+                        const SizedBox(height: 8),
+                        Text(
+                          review['reviewText'] ?? '',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            height: 1.5,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: List.generate(
-                        5,
-                        (index) => Icon(
-                          index < (review['rating'] ?? 0)
-                              ? Icons.star
-                              : Icons.star_border,
-                          color: const Color(0xFF808569),
-                          size: 18,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      review['reviewText'] ?? '',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
+                  );
+                },
               );
             },
           ),
@@ -1097,7 +1070,6 @@ class _ItemServicePageState extends State<ItemServicePage> {
     );
   }
 
-
   void _showBuyNowBottomSheet() async {
     showModalBottomSheet(
       context: context,
@@ -1110,7 +1082,6 @@ class _ItemServicePageState extends State<ItemServicePage> {
           builder: (context, setState) {
             double totalPrice =
                 quantity * double.parse(widget.product['price'].toString());
-
 
             return Padding(
               padding: EdgeInsets.only(
@@ -1166,7 +1137,6 @@ class _ItemServicePageState extends State<ItemServicePage> {
                         ],
                       ),
                     ),
-
 
                     // Date Selection
                     Container(
@@ -1240,9 +1210,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                       ),
                     ),
 
-
                     const SizedBox(height: 20),
-
 
                     // Quantity Selection
                     Row(
@@ -1272,9 +1240,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                       ],
                     ),
 
-
                     const SizedBox(height: 20),
-
 
                     // Total Price
                     Row(
@@ -1294,9 +1260,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                       ],
                     ),
 
-
                     const SizedBox(height: 20),
-
 
                     ElevatedButton(
                       onPressed: selectedDate != null
@@ -1350,6 +1314,168 @@ class _ItemServicePageState extends State<ItemServicePage> {
     );
   }
 
+  // ky line 1317 to line 1476
+  /*String getFirstValidImage(Map<String, dynamic> product) {
+    List<dynamic> images = [
+      product['imageUrl1'],
+      product['imageUrl2'],
+      product['imageUrl3'],
+      product['imageUrl4'],
+      product['imageUrl5'],
+    ]
+        .where((url) =>
+            url != null &&
+            url != 'https://via.placeholder.com/50' &&
+            !url.toLowerCase().endsWith('.mp4'))
+        .toList();
+
+    return images.isNotEmpty ? images[0] : 'https://via.placeholder.com/100';
+  }
+
+  Stream<List<Map<String, dynamic>>> getSimilarProducts() {
+    return FirebaseFirestore.instance
+        .collection('users')
+        .snapshots()
+        .asyncMap((usersSnapshot) async {
+      List<Map<String, dynamic>> allProducts = [];
+
+      for (var userDoc in usersSnapshot.docs) {
+        var productsSnapshot = await userDoc.reference
+            .collection('products')
+            .where('type', isEqualTo: 'service')
+            .where('category', isEqualTo: widget.product['category'])
+            .get();
+
+        for (var productDoc in productsSnapshot.docs) {
+          if (productDoc.id != widget.product['productID']) {
+            var productData = productDoc.data();
+            // Ensure productID is set correctly
+            productData['productID'] =
+                productDoc.id; // Changed from productId to productID
+            productData['userId'] = userDoc.id;
+            productData['userEmail'] = userDoc.data()['email'];
+            productData['username'] = userDoc.data()['username'];
+            allProducts.add(productData);
+          }
+        }
+      }
+
+      return allProducts;
+    });
+  }
+
+  Widget _buildSimilarListings() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(left: 16, top: 16, bottom: 8),
+          child: Text(
+            'Similar Items',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 280,
+          child: StreamBuilder<List<Map<String, dynamic>>>(
+            stream: getSimilarProducts(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return const Center(child: Text('No similar items found'));
+              }
+
+              final products = snapshot.data!;
+
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: products.length,
+                itemBuilder: (context, index) {
+                  final product = products[index];
+                  final validImageUrl = getFirstValidImage(product);
+
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ItemServicePage(product: product),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      width: 160,
+                      margin: const EdgeInsets.only(right: 16),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(8)),
+                            child: Image.network(
+                              validImageUrl,
+                              height: 160,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  height: 160,
+                                  width: double.infinity,
+                                  color: Colors.grey[200],
+                                  child: const Icon(Icons.image_not_supported,
+                                      color: Colors.grey),
+                                );
+                              },
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  product['name'] ?? '',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'RM ${product['price']?.toString() ?? '0'}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF808569),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }*/
 
   @override
   Widget build(BuildContext context) {
@@ -1368,10 +1494,8 @@ class _ItemServicePageState extends State<ItemServicePage> {
       images.add(widget.product['imageUrl3']);
     }
 
-
     images.removeWhere(
         (image) => image == 'https://via.placeholder.com/50' || image.isEmpty);
-
 
     return Scaffold(
       appBar: AppBar(
@@ -1427,7 +1551,6 @@ class _ItemServicePageState extends State<ItemServicePage> {
                           ),
                         ],
 
-
                         // Toggle button for video/images
                         if (_videoController != null &&
                             _getImageUrls().isNotEmpty)
@@ -1457,7 +1580,6 @@ class _ItemServicePageState extends State<ItemServicePage> {
                   )
                 ],
 
-
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -1479,7 +1601,6 @@ class _ItemServicePageState extends State<ItemServicePage> {
                           color: Colors.grey,
                         ),
                       ),
-
 
                       const SizedBox(height: 5),
                       Text(
@@ -1521,7 +1642,6 @@ class _ItemServicePageState extends State<ItemServicePage> {
                         ],
                       ),
 
-
                       const SizedBox(height: 25),
                       RichText(
                         text: TextSpan(
@@ -1544,7 +1664,6 @@ class _ItemServicePageState extends State<ItemServicePage> {
                           ],
                         ),
                       ),
-
 
                       const SizedBox(height: 24),
                       RichText(
@@ -1580,6 +1699,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                     ],
                   ),
                 ),
+                //_buildSimilarListings(), //ky
                 // Bottom padding for navigation bar
                 const SizedBox(height: 80),
               ],
@@ -1610,7 +1730,6 @@ class _ItemServicePageState extends State<ItemServicePage> {
                           .isFavorite(widget.product['productID']),
                       builder: (context, snapshot) {
                         final isFavorited = snapshot.data ?? false;
-
 
                         return IconButton(
                           icon: Icon(
@@ -1644,13 +1763,11 @@ class _ItemServicePageState extends State<ItemServicePage> {
                         final chatId =
                             _generateChatId(currentUser.uid, sellerUserId);
 
-
                         // Check if the chat room exists
                         final chatDoc = await FirebaseFirestore.instance
                             .collection('chats')
                             .doc(chatId)
                             .get();
-
 
                         // Create or update the chat room with product-specific details
                         if (!chatDoc.exists) {
@@ -1680,14 +1797,12 @@ class _ItemServicePageState extends State<ItemServicePage> {
                           });
                         }
 
-
                         // Send a message indicating interest in the product
                         await FirestoreService().sendMessage(
                           chatId,
                           currentUser.uid,
                           "I'm interested in your product: ${widget.product['name']} (RM ${widget.product['price']}).",
                         );
-
 
                         // Navigate to the chat screen
                         Navigator.push(

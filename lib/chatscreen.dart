@@ -41,7 +41,74 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chat'),
+        title: FutureBuilder<DocumentSnapshot>(
+          future: FirebaseFirestore.instance
+              .collection('chats')
+              .doc(widget.chatId)
+              .get(),
+          builder: (context, chatSnapshot) {
+            if (chatSnapshot.connectionState == ConnectionState.waiting) {
+              return const CircularProgressIndicator(color: Colors.white);
+            }
+
+            if (!chatSnapshot.hasData || chatSnapshot.data == null) {
+              return const Text('Chat');
+            }
+
+            // Extract the other user's ID
+            final chatData = chatSnapshot.data!.data() as Map<String, dynamic>;
+            final chatUsers = chatData['users'] as List<dynamic>;
+            final otherUserId = chatUsers.firstWhere(
+              (id) => id != currentUser?.uid,
+              orElse: () => null,
+            );
+
+            if (otherUserId == null) {
+              return const Text('Chat');
+            }
+
+            return FutureBuilder<DocumentSnapshot>(
+              future: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(otherUserId)
+                  .get(),
+              builder: (context, userSnapshot) {
+                if (userSnapshot.connectionState == ConnectionState.waiting) {
+                  return const CircularProgressIndicator(color: Colors.white);
+                }
+
+                if (!userSnapshot.hasData || userSnapshot.data == null) {
+                  return const Text('Chat');
+                }
+
+                final userData =
+                    userSnapshot.data!.data() as Map<String, dynamic>;
+                final profileImage = userData['profileImage'] ?? '';
+                final username = userData['username'] ?? 'Unknown User';
+
+                return Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundImage: profileImage.isNotEmpty
+                          ? NetworkImage(profileImage)
+                          : null,
+                      backgroundColor: Colors.grey,
+                      child: profileImage.isEmpty
+                          ? const Icon(Icons.person, color: Colors.white)
+                          : null,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      username,
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        ),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,

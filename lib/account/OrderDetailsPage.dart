@@ -123,7 +123,8 @@ class OrderDetailsPage extends StatelessWidget {
     );
   }
 
-  String? getFirstValidImage(Map<String, dynamic> product) {//yy
+  String? getFirstValidImage(Map<String, dynamic> product) {
+    //yy
     List<dynamic> images = [
       product['imageUrl1'],
       product['imageUrl2'],
@@ -144,7 +145,8 @@ class OrderDetailsPage extends StatelessWidget {
     return ListTile(
       leading: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: Image.network(//yy
+        child: Image.network(
+          //yy
           getFirstValidImage(orderData) ?? 'https://via.placeholder.com/200',
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
@@ -169,36 +171,71 @@ class OrderDetailsPage extends StatelessWidget {
   }
 
   Widget _buildBuyerInfo(BuildContext context) {
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => UserProfilePage(
-              userId: orderData['buyerId'], // Pass buyer's userId
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('users')
+          .doc(orderData['buyerId'])
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const ListTile(
+            leading: CircleAvatar(
+              backgroundColor: Colors.grey,
+              child: CircularProgressIndicator(color: Colors.white),
             ),
+            title: Text('Loading...'),
+          );
+        }
+
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return ListTile(
+            leading: const CircleAvatar(
+              backgroundColor: Colors.grey,
+              child: Icon(Icons.person, color: Colors.white),
+            ),
+            title: Text(
+              orderData['buyerName'] ?? 'Unknown Buyer',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(orderData['buyerEmail'] ?? 'No Email'),
+          );
+        }
+
+        final buyerData = snapshot.data!.data() as Map<String, dynamic>?;
+
+        return InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => UserProfilePage(
+                  userId: orderData['buyerId'],
+                ),
+              ),
+            );
+          },
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundImage: buyerData?['profileImage'] != null
+                  ? NetworkImage(buyerData!['profileImage'])
+                  : null,
+              backgroundColor: Colors.grey[300],
+              child: buyerData?['profileImage'] == null
+                  ? Text(
+                      orderData['buyerName']?.substring(0, 1).toUpperCase() ??
+                          'B',
+                      style: const TextStyle(color: Colors.black),
+                    )
+                  : null,
+            ),
+            title: Text(
+              orderData['buyerName'] ?? 'Unknown Buyer',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(orderData['buyerEmail'] ?? 'No Email'),
           ),
         );
       },
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundImage: orderData['buyerProfileImage'] != null
-              ? NetworkImage(orderData['buyerProfileImage'])
-              : null,
-          backgroundColor: Colors.grey[300],
-          child: orderData['buyerProfileImage'] == null
-              ? Text(
-                  orderData['buyerName']?.substring(0, 1).toUpperCase() ?? 'B',
-                  style: const TextStyle(color: Colors.black),
-                )
-              : null,
-        ),
-        title: Text(
-          orderData['buyerName'] ?? 'Unknown Buyer',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text(orderData['buyerEmail'] ?? 'No Email'),
-      ),
     );
   }
 

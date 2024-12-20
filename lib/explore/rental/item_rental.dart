@@ -42,11 +42,10 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
     _initializeVideo();
     _initializeMediaContent();
     fetchGlobalSellerreviews();
-        fetchSellerProfile();
-
+    fetchSellerProfile();
   }
 
-    String? sellerProfileImage;
+  String? sellerProfileImage;
 
   Future<void> fetchSellerProfile() async {
     final sellerDoc = await FirebaseFirestore.instance
@@ -62,67 +61,67 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
   }
 
   Future<void> fetchGlobalSellerreviews() async {
-  try {
-    final sellerId = widget.product['userId'];
-    List<double> allReviews = [];
-    List<dynamic> allComments = [];
-    
-    // Get seller's global reviews from the correct collection
-    QuerySnapshot reviewsSnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(sellerId)
-        .collection('reviewsglobal')
-        .orderBy('timestamp', descending: true)
-        .get();
+    try {
+      final sellerId = widget.product['userId'];
+      List<double> allReviews = [];
+      List<dynamic> allComments = [];
 
-    for (var reviewDoc in reviewsSnapshot.docs) {
-      Map<String, dynamic> reviewData = reviewDoc.data() as Map<String, dynamic>;
-      
-      // Parse rating value
-      double rating = 0.0;
-      var ratingValue = reviewData['rating'];
-      if (ratingValue != null) {
-        if (ratingValue is String) {
-          rating = double.tryParse(ratingValue) ?? 0.0;
-        } else if (ratingValue is num) {
-          rating = ratingValue.toDouble();
+      // Get seller's global reviews from the correct collection
+      QuerySnapshot reviewsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(sellerId)
+          .collection('reviewsglobal')
+          .orderBy('timestamp', descending: true)
+          .get();
+
+      for (var reviewDoc in reviewsSnapshot.docs) {
+        Map<String, dynamic> reviewData =
+            reviewDoc.data() as Map<String, dynamic>;
+
+        // Parse rating value
+        double rating = 0.0;
+        var ratingValue = reviewData['rating'];
+        if (ratingValue != null) {
+          if (ratingValue is String) {
+            rating = double.tryParse(ratingValue) ?? 0.0;
+          } else if (ratingValue is num) {
+            rating = ratingValue.toDouble();
+          }
+        }
+
+        // Only add valid reviews
+        if (rating > 0) {
+          allReviews.add(rating);
+          allComments.add({
+            'reviewerId': reviewData['reviewerId'] ?? '',
+            'reviewerName': reviewData['reviewerName'] ?? 'Anonymous',
+            'reviewText': reviewData['reviewText'] ?? '',
+            'rating': rating,
+            'timestamp': reviewData['timestamp'] ?? Timestamp.now(),
+            'productName': reviewData['productName'] ?? '',
+            'productPrice': (reviewData['productPrice'] ?? 0.0).toDouble(),
+            'role': reviewData['role'] ?? 'buyer',
+          });
         }
       }
 
-      // Only add valid reviews
-      if (rating > 0) {
-        allReviews.add(rating);
-        allComments.add({
-          'reviewerId': reviewData['reviewerId'] ?? '',
-          'reviewerName': reviewData['reviewerName'] ?? 'Anonymous',
-          'reviewText': reviewData['reviewText'] ?? '',
-          'rating': rating,
-          'timestamp': reviewData['timestamp'] ?? Timestamp.now(),
-          'productName': reviewData['productName'] ?? '',
-          'productPrice': (reviewData['productPrice'] ?? 0.0).toDouble(),
-          'role': reviewData['role'] ?? 'buyer',
+      if (mounted) {
+        setState(() {
+          globalreviews = allComments;
+          globalAveragereview = allReviews.isNotEmpty
+              ? allReviews.reduce((a, b) => a + b) / allReviews.length
+              : 0.0;
         });
       }
-    }
-
-    if (mounted) {
-      setState(() {
-        globalreviews = allComments;
-        globalAveragereview = allReviews.isNotEmpty
-            ? allReviews.reduce((a, b) => a + b) / allReviews.length
-            : 0.0;
-      });
-    }
-  } catch (e) {
-    print('Error fetching global reviews: $e');
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading seller reviews: $e')),
-      );
+    } catch (e) {
+      print('Error fetching global reviews: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading seller reviews: $e')),
+        );
+      }
     }
   }
-}
-
 
 // Add this helper method to match ChatList's ID generation
   String _generateChatId(String userId1, String userId2) {
@@ -932,178 +931,179 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
     );
   }
 
-   Widget _buildSellerSection() {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Padding(
-        padding: EdgeInsets.only(left: 6, bottom: 4),
-        child: Text(
-          'Seller Info',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-      GestureDetector(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => UserProfilePage(
-                userId: widget.product['userId'],
-              ),
+  Widget _buildSellerSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(left: 6, bottom: 4),
+          child: Text(
+            'Seller Info',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
             ),
-          );
-        },
-        child: Container(
-          margin: const EdgeInsets.all(6),
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: const Color(0xFFD8DCC6),
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(width: 20),
-              Column(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: Colors.white,
-                    radius: 50,
-                    backgroundImage: sellerProfileImage != null &&
-                            sellerProfileImage!.isNotEmpty
-                        ? NetworkImage(sellerProfileImage!)
-                        : null,
-                    child: sellerProfileImage == null ||
-                            sellerProfileImage!.isEmpty
-                        ? Text(
-                            widget.product['username']?[0].toUpperCase() ?? 'S',
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF808569),
-                            ),
-                          )
-                        : null,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    widget.product['username'] ?? 'Seller Name',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    '${globalAveragereview.toStringAsFixed(1)}-Star Seller', // Updated to use globalAveragereview
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.normal,
-                    ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  const Text(
-                    'Overall Rating',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.black54,
-                    ),
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        globalAveragereview.toStringAsFixed(1), // Updated to use globalAveragereview
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Icon(
-                        Icons.star,
-                        size: 18,
-                        color: Color(0xFF808569),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(
-                    width: 120,
-                    child: Divider(thickness: 1, color: Colors.black38),
-                  ),
-                  const Text(
-                    'Overall Review',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.black54,
-                    ),
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${globalreviews.length}', // Updated to use globalreviews
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Text(
-                        ' Comments',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(
-                    width: 120,
-                    child: Divider(thickness: 1, color: Colors.black38),
-                  ),
-                  const Text(
-                    'Sell For',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.black54,
-                    ),
-                  ),
-                  const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '3',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        ' years',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              )
-            ],
           ),
         ),
-      ),
-    ],
-  );
-}
-
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => UserProfilePage(
+                  userId: widget.product['userId'],
+                ),
+              ),
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.all(6),
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: const Color(0xFFD8DCC6),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(width: 20),
+                Column(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: Colors.white,
+                      radius: 50,
+                      backgroundImage: sellerProfileImage != null &&
+                              sellerProfileImage!.isNotEmpty
+                          ? NetworkImage(sellerProfileImage!)
+                          : null,
+                      child: sellerProfileImage == null ||
+                              sellerProfileImage!.isEmpty
+                          ? Text(
+                              widget.product['username']?[0].toUpperCase() ??
+                                  'S',
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF808569),
+                              ),
+                            )
+                          : null,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      widget.product['username'] ?? 'Seller Name',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      '${globalAveragereview.toStringAsFixed(1)}-Star Seller', // Updated to use globalAveragereview
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Text(
+                      'Overall Rating',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          globalAveragereview.toStringAsFixed(
+                              1), // Updated to use globalAveragereview
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Icon(
+                          Icons.star,
+                          size: 18,
+                          color: Color(0xFF808569),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(
+                      width: 120,
+                      child: Divider(thickness: 1, color: Colors.black38),
+                    ),
+                    const Text(
+                      'Overall Review',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${globalreviews.length}', // Updated to use globalreviews
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Text(
+                          ' Comments',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(
+                      width: 120,
+                      child: Divider(thickness: 1, color: Colors.black38),
+                    ),
+                    const Text(
+                      'Sell For',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
+                    const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '3',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          ' years',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                )
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _buildreviewSection() {
     return Container(
@@ -1181,80 +1181,103 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
             itemBuilder: (context, index) {
               final review = reviews[index];
               final reviewerName = review['reviewerName'] ?? 'Anonymous';
+              final reviewerId = review['reviewerId'];
 
-              return Container(
-                margin: const EdgeInsets.only(bottom: 24),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.withOpacity(0.2)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+              //ky add reviewer profile image
+              return FutureBuilder<DocumentSnapshot>(
+                future: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(reviewerId)
+                    .get(),
+                builder: (context, snapshot) {
+                  String? profileImageUrl;
+
+                  if (snapshot.connectionState == ConnectionState.done &&
+                      snapshot.hasData &&
+                      snapshot.data!.exists) {
+                    profileImageUrl = snapshot.data!.get('profileImage');
+                  }
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 24),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        CircleAvatar(
-                          backgroundColor: const Color(0xFF808569),
-                          radius: 22,
-                          child: Text(
-                            reviewerName[0].toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 22,
+                              backgroundImage: profileImageUrl != null
+                                  ? NetworkImage(profileImageUrl)
+                                  : null,
+                              backgroundColor: const Color(0xFF808569),
+                              child: profileImageUrl == null
+                                  ? Text(
+                                      reviewerName[0].toUpperCase(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    reviewerName,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _formatTimestamp(review['timestamp']),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: List.generate(
+                            5,
+                            (index) => Icon(
+                              index < (review['rating'] ?? 0)
+                                  ? Icons.star
+                                  : Icons.star_border,
+                              color: const Color(0xFF808569),
+                              size: 18,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                reviewerName,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _formatTimestamp(review['timestamp']),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ],
+                        const SizedBox(height: 8),
+                        Text(
+                          review['reviewText'] ?? '',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            height: 1.5,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: List.generate(
-                        5,
-                        (index) => Icon(
-                          index < (review['rating'] ?? 0)
-                              ? Icons.star
-                              : Icons.star_border,
-                          color: const Color(0xFF808569),
-                          size: 18,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      review['reviewText'] ?? '',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
+                  );
+                },
               );
             },
           ),
@@ -1286,6 +1309,169 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
             ),
         ],
       ),
+    );
+  }
+
+  // ky line 1315 to line 1476
+  String getFirstValidImage(Map<String, dynamic> product) {
+    List<dynamic> images = [
+      product['imageUrl1'],
+      product['imageUrl2'],
+      product['imageUrl3'],
+      product['imageUrl4'],
+      product['imageUrl5'],
+    ]
+        .where((url) =>
+            url != null &&
+            url != 'https://via.placeholder.com/50' &&
+            !url.toLowerCase().endsWith('.mp4'))
+        .toList();
+
+    return images.isNotEmpty ? images[0] : 'https://via.placeholder.com/100';
+  }
+
+  Stream<List<Map<String, dynamic>>> getSimilarProducts() {
+    return FirebaseFirestore.instance
+        .collection('users')
+        .snapshots()
+        .asyncMap((usersSnapshot) async {
+      List<Map<String, dynamic>> allProducts = [];
+
+      for (var userDoc in usersSnapshot.docs) {
+        var productsSnapshot = await userDoc.reference
+            .collection('products')
+            .where('type', isEqualTo: 'rental')
+            .where('category', isEqualTo: widget.product['category'])
+            .get();
+
+        for (var productDoc in productsSnapshot.docs) {
+          if (productDoc.id != widget.product['productID']) {
+            var productData = productDoc.data();
+            // Ensure productID is set correctly
+            productData['productID'] =
+                productDoc.id; // Changed from productId to productID
+            productData['userId'] = userDoc.id;
+            productData['userEmail'] = userDoc.data()['email'];
+            productData['username'] = userDoc.data()['username'];
+            allProducts.add(productData);
+          }
+        }
+      }
+
+      return allProducts;
+    });
+  }
+
+  Widget _buildSimilarListings() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(left: 16, top: 16, bottom: 8),
+          child: Text(
+            'Similar Items',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 280,
+          child: StreamBuilder<List<Map<String, dynamic>>>(
+            stream: getSimilarProducts(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return const Center(child: Text('No similar items found'));
+              }
+
+              final products = snapshot.data!;
+
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: products.length,
+                itemBuilder: (context, index) {
+                  final product = products[index];
+                  final validImageUrl = getFirstValidImage(product);
+
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ItemRentalPage(product: product),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      width: 160,
+                      margin: const EdgeInsets.only(right: 16),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(8)),
+                            child: Image.network(
+                              validImageUrl,
+                              height: 160,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  height: 160,
+                                  width: double.infinity,
+                                  color: Colors.grey[200],
+                                  child: const Icon(Icons.image_not_supported,
+                                      color: Colors.grey),
+                                );
+                              },
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  product['name'] ?? '',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'RM ${product['price']?.toString() ?? '0'}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF808569),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -1547,6 +1733,7 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                     ],
                   ),
                 ),
+                _buildSimilarListings(), //ky
                 // Bottom padding for navigation bar
                 const SizedBox(height: 80),
               ],

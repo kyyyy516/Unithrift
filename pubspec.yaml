@@ -61,6 +61,8 @@ dependencies:
   flutter_rating_bar: ^4.0.0
   email_otp: ^3.0.2
   syncfusion_flutter_datepicker: ^28.1.33
+  fl_chart: ^0.69.2
+
 
 dev_dependencies:
   flutter_test:

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:unithrift/account/OrderDetailsPage.dart';
+import 'package:unithrift/account/sales_report.dart';
 import 'package:unithrift/chatscreen.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 
@@ -576,6 +577,21 @@ class _MySalesPageState extends State<MySalesPage> {
         ),
         backgroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bar_chart, color: Colors.black),
+            tooltip: 'View Sales Report',
+            onPressed: () {
+              // Navigate to the Sales Report Page
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SalesReportPage(),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -854,7 +870,8 @@ class _MySalesPageState extends State<MySalesPage> {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(//yy
+                  child: Image.network(
+                    //yy
                     getFirstValidImage(sale) ??
                         'https://via.placeholder.com/100',
                     height: 80,

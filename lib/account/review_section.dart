@@ -19,7 +19,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
     final reviewsCollection = FirebaseFirestore.instance
         .collection('users')
         .doc(widget.userId) // Use userId from the widget
-        .collection('reviews');
+        .collection('reviewsglobal');
 
     if (_selectedTabIndex == 1) {
       return reviewsCollection.where('role', isEqualTo: 'seller').snapshots();
