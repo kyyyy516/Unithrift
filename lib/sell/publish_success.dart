@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../homepage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'listing_details.dart';
+import 'my_listing.dart';
 
 
 class PublishSuccessfulPage extends StatefulWidget {
@@ -77,18 +78,32 @@ class _PublishSuccessfulPageState extends State<PublishSuccessfulPage> {
                   // print('Document data: ${docSnapshot.data()}');
 
               if (mounted && docSnapshot.exists) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ListingPage(
-                      product: docSnapshot.data()!,
+    // First replace current route with AllProductPage
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const AllProductPage()),
+    );
+
+                // Navigate to ListingPage
+                if (mounted) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ListingPage(
+                        product: {
+                        ...docSnapshot.data()!,
+                        'userId': widget.userID,
+                        'productID': widget.productID,
+                        //fromPublishSuccessful: true, // Set this to true
+                        }
+                      ),
                     ),
-                  ),
-                );
-              }
+                  );
+                }
+              } 
 
             },
-            child: Text('View Product'),
+            child: Text('View Listing'),
             
           ),
           
@@ -96,9 +111,10 @@ class _PublishSuccessfulPageState extends State<PublishSuccessfulPage> {
           TextButton(
             onPressed: () {
               // Navigate to the home page
-              Navigator.push(
+              Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (context) => const Homepage()),
+                (route) => false,
               );
             },
             child: Text('Back To Home',

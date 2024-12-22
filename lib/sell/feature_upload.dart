@@ -1,15 +1,14 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-//import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:file_picker/file_picker.dart';
-//import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:video_player/video_player.dart';
 import '../services/cloudinary_service.dart';
 import '../services/db_service.dart';
+import '../sell/publish_success.dart';
+import '../sell/preview_video.dart';
+import '../sell/video_thumbnail.dart';
 
 class UploadFeaturePage extends StatefulWidget {
   //const TestPage(this.noAppBar, {super.key});
@@ -27,12 +26,14 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
   final TextEditingController _detailsController = TextEditingController();
   final TextEditingController _brandController = TextEditingController();
 
-  // Support up to 3 images
+  // Support up to 5 medias
   List<File> _mediaFiles = [];
   //List<FilePickerResult?> _mediaFiles = [];
   List<String> _mediaUrls = [];
   bool _isUploading = false;
-  static const int maxMedia = 3;
+  static const int maxMedia = 5;
+  static const int maxVideo = 1;
+  
 
   // Product Condition Options
   final List<String> _conditionOptions = [
@@ -59,18 +60,41 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
   bool _validateProductDetails() {
     if (_mediaFiles.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one image/video')),
+        const SnackBar(content: Text('Please select at least one image')),
       );
       return false;
     }
 
-    if (_selectedCategory == null) {
+    // Check if there's at least one image
+    bool hasImage = false;
+    int videoCount = 0;
+    
+    for (var file in _mediaFiles) {
+      if (file.path.toLowerCase().endsWith('.jpg') || 
+          file.path.toLowerCase().endsWith('.jpeg') || 
+          file.path.toLowerCase().endsWith('.png')) {
+        hasImage = true;
+      } else if (file.path.toLowerCase().endsWith('.mp4') || 
+                file.path.toLowerCase().endsWith('.mov')) {
+        videoCount++;
+      }
+    }
+
+    if (!hasImage) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a category')),
+        const SnackBar(content: Text('Please include at least one image')),
       );
       return false;
     }
 
+    if (videoCount > maxVideo) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Only one video is allowed')),
+      );
+      return false;
+    }
+
+    // Condition validation
     if (_selectedCondition == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a condition')),
@@ -173,7 +197,7 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
                     right: 10,
                     child: IconButton(
                       icon:
-                          const Icon(Icons.close, color: Colors.red, size: 30),
+                          const Icon(Icons.close, color: Colors.white, size: 30),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ),
@@ -190,80 +214,7 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
 
       showDialog(
         context: context,
-        builder: (BuildContext context) {
-          return PopScope(
-            canPop: true,
-            child: Dialog(
-              backgroundColor: Colors.black,
-              insetPadding: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-              child: MediaQuery(
-                data: MediaQuery.of(context).copyWith(
-                  padding: EdgeInsets.zero,
-                  viewInsets: EdgeInsets.zero,
-                ),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        // Pause the video when tapped
-                        if (videoController.value.isPlaying) {
-                          videoController.pause();
-                        } else {
-                          // Play the video when tapped
-                          videoController.play();
-                        }
-                      },
-                      child: Center(
-                        child: InteractiveViewer(
-                          child: AspectRatio(
-                            aspectRatio: videoController.value.aspectRatio,
-                            child: VideoPlayer(videoController),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 10,
-                      right: 10,
-                      child: IconButton(
-                        icon: const Icon(Icons.close,
-                            color: Colors.red, size: 30),
-                        onPressed: () {
-                          // Dispose the video controller and close the dialog
-                          videoController.dispose();
-                          Navigator.of(context).pop();
-                        },
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 10,
-                      right: 10,
-                      child: IconButton(
-                        icon: Icon(
-                          videoController.value.isPlaying
-                              ? Icons.pause
-                              : Icons.play_arrow,
-                          color: Colors.red,
-                          size: 30,
-                        ),
-                        onPressed: () {
-                          if (videoController.value.isPlaying) {
-                            videoController.pause();
-                          } else {
-                            videoController.play();
-                          }
-                          setState(() {});
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
+        builder: (context) => VideoPreviewDialog(videoController: videoController),
       );
     }
   }
@@ -293,8 +244,36 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
         _isUploading = true;
       });
 
+      // Show loading dialog 
+    showDialog( 
+      context: context, 
+      barrierDismissible: false, 
+      builder: (BuildContext context) { 
+        return const Center( 
+          child: Dialog( 
+            backgroundColor: Colors.transparent, 
+            elevation: 0, 
+            child: Column( 
+              mainAxisSize: MainAxisSize.min, 
+              children: [ 
+                CircularProgressIndicator( 
+                  color: Color(0xFF808569), 
+                ), 
+                SizedBox(height: 16), 
+                Text( 
+                  'Publishing...', 
+                  style: TextStyle(color: Colors.white), 
+                ), 
+              ], 
+            ), 
+          ), 
+        ); 
+      }, 
+    );
+
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
+        Navigator.pop(context); // Dismiss loading dialog
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please login first')),
         );
@@ -337,12 +316,18 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
       await productDoc.update({'productId': productDoc.id});
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('${_nameController.text} uploaded successfully!')),
+        Navigator.pop(context); 
+        // Navigate to the "Publish Successful!" page with product ID
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PublishSuccessfulPage(
+              productID: productDoc.id,
+              userID: currentUser.uid,
+            )
+          ),
         );
 
-        //_formKey.currentState!.reset();
         // With this safer version
         if (_formKey.currentState != null) {
           _formKey.currentState!.reset();
@@ -362,8 +347,10 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
       }
     } catch (e, stackTrace) {
       if (mounted) {
-        print('Error details: $e');
-        print('Stack trace: $stackTrace');
+        // print('Error details: $e');
+        // print('Stack trace: $stackTrace');
+
+        Navigator.pop(context); // Dismiss loading dialog
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Upload failed: $e')),
         );
@@ -379,25 +366,75 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
     final picker = ImagePicker();
     final pickedFiles = await picker.pickMultipleMedia();
 
-    // Limit to MAX_IMAGES (3)
-    final limitedFiles = pickedFiles.take(maxMedia).toList();
+    // Count existing videos
+  int currentVideoCount = _mediaFiles.where((file) => 
+    file.path.toLowerCase().endsWith('.mp4') || 
+    file.path.toLowerCase().endsWith('.mov')
+  ).length;
+
+  // Filter and process new files
+  List<File> newFiles = [];
+  List<File> imageFiles = [];
+  File? videoFile;
+
+  for (var file in pickedFiles) {
+    String path = file.path.toLowerCase();
+    bool isVideo = path.endsWith('.mp4') || path.endsWith('.mov');
+    
+    if (isVideo && currentVideoCount < maxVideo && videoFile == null) {
+      videoFile = File(file.path);
+    } else if (path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png')) {
+      imageFiles.add(File(file.path));
+    }
+  }
+
+  // Arrange files with video first if present
+  if (videoFile != null) {
+    newFiles.add(videoFile);
+  }
+  newFiles.addAll(imageFiles);
+
+  // Check if total files would exceed maximum
+  if (_mediaFiles.length + newFiles.length > maxMedia) {
+    newFiles = newFiles.take(maxMedia - _mediaFiles.length).toList();
+  }
 
     setState(() {
-      _mediaFiles = limitedFiles.map((file) {
-        if (file.path.endsWith('.jpg') ||
-            file.path.endsWith('.png') ||
-            file.path.endsWith('.jpeg')) {
-          return File(file.path);
-        } else {
-          return File(file.path);
-        }
-      }).toList();
+      // If this is first selection, directly set the files
+    if (_mediaFiles.isEmpty) {
+      _mediaFiles = newFiles;
+    } else {
+      // If adding to existing files, maintain video first order
+      List<File> existingVideo = _mediaFiles.where((file) => 
+        file.path.toLowerCase().endsWith('.mp4') || 
+        file.path.toLowerCase().endsWith('.mov')
+      ).toList();
+      
+      List<File> existingImages = _mediaFiles.where((file) => 
+        !file.path.toLowerCase().endsWith('.mp4') && 
+        !file.path.toLowerCase().endsWith('.mov')
+      ).toList();
+
+      _mediaFiles = [...existingVideo, ...existingImages, ...newFiles];
+    }
     });
 
-    // Show a message if more than MAX_IMAGES were selected
+    // Show messages only when limits are exceeded
     if (pickedFiles.length > maxMedia) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Only $maxMedia media files can be uploaded')),
+        const SnackBar(content: Text('Only 1 video and 4 images can be uploaded in total.')),
+      );
+    }
+
+    // Show message when multiple videos are selected
+    int selectedVideoCount = pickedFiles.where((file) => 
+      file.path.toLowerCase().endsWith('.mp4') || 
+      file.path.toLowerCase().endsWith('.mov')
+    ).length;
+
+    if (selectedVideoCount > maxVideo) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Only one video is allowed.')),
       );
     }
   }
@@ -405,6 +442,21 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
   void _removeMedia(int index) {
     setState(() {
       _mediaFiles.removeAt(index);
+
+      // Reorder files if needed to keep video first
+      if (_mediaFiles.isNotEmpty) {
+        List<File> videos = _mediaFiles.where((file) => 
+          file.path.toLowerCase().endsWith('.mp4') || 
+          file.path.toLowerCase().endsWith('.mov')
+        ).toList();
+        
+        List<File> images = _mediaFiles.where((file) => 
+          !file.path.toLowerCase().endsWith('.mp4') && 
+          !file.path.toLowerCase().endsWith('.mov')
+        ).toList();
+
+        _mediaFiles = [...videos, ...images];
+      }
     });
   }
 
@@ -426,9 +478,8 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
         ),
         //centerTitle: true,
       ),
-      body: _isUploading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
+      body: 
+          SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Form(
                 key: _formKey,
@@ -484,14 +535,11 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
                                               height: 120,
                                               fit: BoxFit.cover,
                                             )
-                                          : const SizedBox(
-                                              width: 120,
-                                              height: 120,
-                                              child: Center(
-                                                child: Icon(Icons.videocam,
-                                                    size: 40),
-                                              ),
-                                            ),
+                                          : VideoThumbnail(
+        videoFile: mediaFile,
+        width: 120,
+        height: 120,
+      ),
                                     ),
                                   ),
                                   Positioned(
@@ -619,7 +667,7 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
                         elevation: 3, // Shadow elevation
                       ),
                       onPressed: _uploadProduct,
-                      child: const Text('Upload Product'),
+                      child: const Text('Publish Now'),
                     ),
                   ],
                 ),

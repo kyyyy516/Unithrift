@@ -10,11 +10,13 @@ import 'package:unithrift/firestore_service.dart';
 class EditRentalPage extends StatefulWidget {
   final String productID;
   final String userID;
+  final Map<String, dynamic> product;
 
   const EditRentalPage({
     super.key, 
     required this.productID,
     required this.userID,
+    required this.product,
   });
 
   @override
@@ -227,7 +229,9 @@ class _EditRentalPageState extends State<EditRentalPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Updated successfully')),
+          SnackBar(
+            content: Text('${widget.product['name']} updated successfully'),
+          ),
         );
         // Refresh the parent page
         Navigator.pop(context, true);

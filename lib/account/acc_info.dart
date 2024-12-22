@@ -416,7 +416,8 @@ class _AccountInfoState extends State<AccountInfo> {
                                   color: Colors.yellow, size: 18),
                               const SizedBox(width: 4),
                               Text(
-                                (userData['rating'] ?? 0.0).toStringAsFixed(2),
+                                //(userData['rating'] ?? 0.0).toStringAsFixed(2),
+                                (double.tryParse(userData['rating'].toString()) ?? 0.0).toStringAsFixed(2), // zx
                                 style: const TextStyle(fontSize: 14),
                               ),
                             ],

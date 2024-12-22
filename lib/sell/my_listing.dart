@@ -474,7 +474,7 @@ String? getFirstValidImage(Map<String, dynamic> product) {//yy
               ),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.9),
+                  color: Colors.grey.withOpacity(0.7),   // 0.8
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: Column(

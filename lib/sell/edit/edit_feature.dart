@@ -8,7 +8,7 @@ import 'dart:math' show min; // Add this import at the top
 import 'package:unithrift/firestore_service.dart';
 
 class EditProductPage extends StatefulWidget {
-  //final Map<String, dynamic> product;
+  final Map<String, dynamic> product;
   final String productID;
   final String userID;
 
@@ -16,6 +16,7 @@ class EditProductPage extends StatefulWidget {
     super.key, 
     required this.productID,
     required this.userID,
+    required this.product,
   });
 
   @override
@@ -229,7 +230,9 @@ class _EditProductPageState extends State<EditProductPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Updated successfully')),
+          SnackBar(
+            content: Text('${widget.product['name']} updated successfully'),
+          ),
         );
         Navigator.pop(context, true); // Return true to indicate successful update
       }

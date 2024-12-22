@@ -2,22 +2,23 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart' hide CarouselController;
-import 'package:unithrift/chatscreen.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
-import 'dart:math' show min; // Add this import at the top
 import 'package:unithrift/firestore_service.dart';
 import '../sell/edit/edit_feature.dart';
 import '../sell/edit/edit_rental.dart';
 import '../sell/edit/edit_service.dart';
 import '../services/cloudinary_service.dart';
+import '../sell/my_listing.dart';
 
 class ListingPage extends StatefulWidget {
-  final Map<String, dynamic?> product;  // Make it optional with ?
+  final Map<String, dynamic> product;  // Make it optional with ?
+  final bool fromPublishSuccessful;
 
   const ListingPage({
     super.key, 
-    required this.product
+    required this.product,
+    this.fromPublishSuccessful = false,
   });
 
   @override
@@ -157,6 +158,33 @@ String extractPublicId(String cloudinaryUrl) {
 
     if (!confirm) return;
 
+    // Show loading dialog 
+    showDialog( 
+      context: context, 
+      barrierDismissible: false, 
+      builder: (BuildContext context) { 
+        return const Center( 
+          child: Dialog( 
+            backgroundColor: Colors.transparent, 
+            elevation: 0, 
+            child: Column( 
+              mainAxisSize: MainAxisSize.min, 
+              children: [ 
+                CircularProgressIndicator( 
+                  color: Color(0xFF808569), 
+                ), 
+                SizedBox(height: 16), 
+                Text( 
+                  'Deleting...', 
+                  style: TextStyle(color: Colors.white), 
+                ), 
+              ], 
+            ), 
+          ), 
+        ); 
+      }, 
+    );
+
     
 
     // First delete the media from Cloudinary
@@ -189,13 +217,25 @@ String extractPublicId(String cloudinaryUrl) {
 
 
     if (mounted) {
+      // Close the loading dialog
+      Navigator.pop(context);
+
+      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Deleted successfully')),
+        SnackBar(
+          content: Text('${widget.product['name']} deleted successfully')),
       );
-      Navigator.pop(context); // Return to previous screen
+      // Navigate back to my_listing
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const AllProductPage()),
+      );
     }
   } catch (e) {
     if (mounted) {
+      // Close the loading dialog
+      Navigator.pop(context);
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error deleting item: $e')),
       );
@@ -220,14 +260,17 @@ void _editProduct() async {
     'rental': () => EditRentalPage(
           productID: productId,
           userID: userId,
+          product: widget.product,
         ),
     'feature': () => EditProductPage(
           productID: productId,
           userID: userId,
+          product: widget.product,
         ),
     'service': () => EditServicePage(
           productID: productId,
           userID: userId,
+          product: widget.product,
         ),        
   };
 
@@ -266,6 +309,7 @@ void _editProduct() async {
 Future<void> _toggleAvailability() async {
   try {
     final currentAvailability = widget.product['isAvailable'] ?? true;
+    final productName = widget.product['name'];
     
     // Add confirmation dialog
     bool? confirm = await showDialog(
@@ -274,8 +318,8 @@ Future<void> _toggleAvailability() async {
         return AlertDialog(
           title: const Text('Confirm Change'),
           content: Text(currentAvailability 
-              ? 'Mark this item as unavailable?' 
-              : 'Make this item available again?'),
+              ? 'Mark $productName as unavailable?' 
+              : 'Make $productName available again?'),
           actions: [
             TextButton(
               child: const Text('Cancel'),
@@ -307,8 +351,8 @@ Future<void> _toggleAvailability() async {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(currentAvailability 
-              ? 'Item marked as unavailable' 
-              : 'Item marked as available'),
+              ? '$productName marked as unavailable' 
+              : '$productName marked as available'),
           ),
         );
       }
@@ -551,6 +595,19 @@ images.removeWhere((image) =>
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+    icon: const Icon(Icons.arrow_back),
+    onPressed: () {
+      if (widget.fromPublishSuccessful) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const AllProductPage()),
+        );
+      } else {
+        Navigator.pop(context);
+      }
+    },
+  ),
         title: Text(widget.product['name'] ?? 'Product Details'),
         backgroundColor: Colors.white,
       ),
@@ -673,7 +730,7 @@ if (images.isNotEmpty || widget.product['imageUrl1']?.toString().toLowerCase().e
             child: GestureDetector(
               onTap: () {},
               child: Container(
-                color: Colors.grey.withOpacity(0.9),  // 0.7
+                color: Colors.grey.withOpacity(0.7),  // 0.8
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
