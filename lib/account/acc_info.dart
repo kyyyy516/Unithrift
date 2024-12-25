@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:unithrift/account/myorder.dart';
 import 'package:unithrift/account/showfavourite.dart';
+import 'package:unithrift/account/transaction.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../sell/my_listing.dart';
@@ -544,7 +545,7 @@ class _AccountInfoState extends State<AccountInfo> {
                           tabs: [
                             Tab(text: 'Listing'),
                             Tab(text: 'Review'),
-                            Tab(text: 'About'),
+                            Tab(text: 'Transaction'),
                           ],
                         ),
                         Container(
@@ -556,7 +557,7 @@ class _AccountInfoState extends State<AccountInfo> {
                                 ReviewsSection(
                                     userId: FirebaseAuth.instance.currentUser!
                                         .uid), // Pass the userId
-                              const Center(child: Text('About Section')),
+                              const TransactionHistoryPage(),
                             ],
                           ),
                         ),

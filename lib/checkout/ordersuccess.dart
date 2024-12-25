@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:unithrift/account/myorder.dart';
+import 'package:unithrift/account/transaction.dart';
 
 class OrderSuccessPage extends StatefulWidget {
   final bool isMeetup;
@@ -275,6 +276,31 @@ class _OrderSuccessPageState extends State<OrderSuccessPage> {
                   ),
                 ),
               ),
+              SizedBox(
+  width: double.infinity,
+  child: ElevatedButton(
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const TransactionHistoryPage(),
+        ),
+      );
+    },
+    style: ElevatedButton.styleFrom(
+      backgroundColor: const Color(0xFF808569),
+      padding: const EdgeInsets.symmetric(vertical: 15),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(25),
+      ),
+    ),
+    child: const Text(
+      'View Transaction History',
+      style: TextStyle(color: Colors.white),
+    ),
+  ),
+),
+
               const SizedBox(height: 15),
               GestureDetector(
                 onTap: () {
