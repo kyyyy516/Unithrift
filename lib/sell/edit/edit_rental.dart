@@ -2,7 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart' hide CarouselController;
 import 'package:video_player/video_player.dart';
-import 'package:unithrift/firestore_service.dart';
+import 'package:unithrift/services/cloudinary_service.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as path;
+import 'package:unithrift/sell/video_thumbnail.dart';
+import 'package:unithrift/sell/preview_video.dart';
 
 class EditRentalPage extends StatefulWidget {
   final String productID;
@@ -24,6 +30,13 @@ class _EditRentalPageState extends State<EditRentalPage> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = true;
   Map<String, dynamic>? _productData;
+
+  // Add these properties
+  List<File> _mediaFiles = [];
+  List<String> _mediaUrls = [];
+  static const int maxMedia = 5;
+  static const int maxVideo = 1;
+  bool _isUploading = false;
 
   final List<String> _categories = [
     'Books and Study Materials', // rental
@@ -65,7 +78,127 @@ class _EditRentalPageState extends State<EditRentalPage> {
     _priceController = TextEditingController();
     _detailsController = TextEditingController();
     _brandController = TextEditingController();
+
+    // Initialize media URLs from existing product
+    List<String> mediaUrls = [];
+    for (int i = 1; i <= 5; i++) {
+      String? imageUrl = widget.product['imageUrl$i'];
+      if (imageUrl != null && imageUrl.isNotEmpty) {
+        mediaUrls.add(imageUrl);
+      }
+    }
+    
+    if (mediaUrls.isNotEmpty) {
+      _mediaUrls = mediaUrls;
+      _downloadAndSetMediaFiles(mediaUrls);
+    }
+
     _fetchProductData();
+  }
+
+  // Add media picking method
+  void _pickMediaFiles() async {
+    final picker = ImagePicker();
+    final pickedFiles = await picker.pickMultipleMedia();
+
+    int currentVideoCount = _mediaFiles.where((file) => 
+      file.path.toLowerCase().endsWith('.mp4') || 
+      file.path.toLowerCase().endsWith('.mov')
+    ).length;
+
+    List<File> newFiles = [];
+    List<File> imageFiles = [];
+    File? videoFile;
+
+    for (var file in pickedFiles) {
+      String path = file.path.toLowerCase();
+      if (path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png')) {
+        imageFiles.add(File(file.path));
+      } else if (path.endsWith('.mp4') || path.endsWith('.mov') && currentVideoCount < maxVideo && videoFile == null) {
+        videoFile = File(file.path);
+      }
+    }
+
+    // Arrange files with video first
+    if (videoFile != null) {
+      newFiles = [videoFile];
+    }
+    newFiles.addAll(imageFiles);
+
+    if (_mediaFiles.length + newFiles.length > maxMedia) {
+      newFiles = newFiles.take(maxMedia - _mediaFiles.length).toList();
+    }
+
+    setState(() {
+      if (_mediaFiles.isEmpty) {
+        _mediaFiles = newFiles;
+      } else {
+        List<File> allVideos = [
+          ..._mediaFiles.where((file) => 
+            file.path.toLowerCase().endsWith('.mp4') || 
+            file.path.toLowerCase().endsWith('.mov')
+          ),
+          ...newFiles.where((file) => 
+            file.path.toLowerCase().endsWith('.mp4') || 
+            file.path.toLowerCase().endsWith('.mov')
+          )
+        ];
+        
+        List<File> allImages = [
+          ..._mediaFiles.where((file) => 
+            file.path.toLowerCase().endsWith('.jpg') || 
+            file.path.toLowerCase().endsWith('.jpeg') || 
+            file.path.toLowerCase().endsWith('.png')
+          ),
+          ...newFiles.where((file) => 
+            file.path.toLowerCase().endsWith('.jpg') || 
+            file.path.toLowerCase().endsWith('.jpeg') || 
+            file.path.toLowerCase().endsWith('.png')
+          )
+        ];
+
+        _mediaFiles = [...allVideos, ...allImages];
+      }
+    });
+  }
+
+  // Add media download method
+  Future<void> _downloadAndSetMediaFiles(List<String> urls) async {
+    List<File> videoFiles = [];
+    List<File> imageFiles = [];
+
+    for (String url in urls) {
+      if (url.isNotEmpty) {
+        final response = await http.get(Uri.parse(url));
+        final bytes = response.bodyBytes;
+        final fileName = path.basename(url);
+        final tempFile = File('${Directory.systemTemp.path}/$fileName');
+        await tempFile.writeAsBytes(bytes);
+        
+        String filePath = url.toLowerCase();
+        if (filePath.endsWith('.mp4') || filePath.endsWith('.mov')) {
+          if (videoFiles.isEmpty) {
+            videoFiles.add(tempFile);
+          }
+        } else if (filePath.endsWith('.jpg') || 
+                  filePath.endsWith('.jpeg') || 
+                  filePath.endsWith('.png')) {
+          imageFiles.add(tempFile);
+        }
+      }
+    }
+
+    List<File> allFiles = [...videoFiles, ...imageFiles];
+    
+    if (allFiles.length > maxMedia) {
+      allFiles = allFiles.take(maxMedia).toList();
+    }
+
+    if (mounted) {
+      setState(() {
+        _mediaFiles = allFiles;
+      });
+    }
   }
 
   // Enhanced product validation method
@@ -129,6 +262,66 @@ class _EditRentalPageState extends State<EditRentalPage> {
     return true;
   }
 
+  void _showMediaPreview(File mediaFile) async {
+    if (mediaFile.path.endsWith('.jpg') ||
+        mediaFile.path.endsWith('.png') ||
+        mediaFile.path.endsWith('.jpeg')) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return Dialog(
+            backgroundColor: Colors.black,
+            insetPadding: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+            child: MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                padding: EdgeInsets.zero,
+                viewInsets: EdgeInsets.zero,
+              ),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Center(
+                      child: InteractiveViewer(
+                        child: Image.file(
+                          mediaFile,
+                          fit: BoxFit.contain,
+                          width: MediaQuery.of(context).size.width,
+                          height: MediaQuery.of(context).size.height,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: IconButton(
+                      icon:
+                          const Icon(Icons.close, color: Colors.white, size: 30),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    } else {
+      // Video preview
+      final videoController = VideoPlayerController.file(mediaFile);
+      await videoController.initialize();
+
+      showDialog(
+        context: context,
+        builder: (context) => VideoPreviewDialog(videoController: videoController),
+      );
+    }
+  }
+
+
     Future<void> _fetchProductData() async {
     try {
       final doc = await FirebaseFirestore.instance
@@ -176,15 +369,6 @@ class _EditRentalPageState extends State<EditRentalPage> {
     }
   }
 
-  bool _hasChanges() {
-    return _nameController.text != _initialName ||
-        _priceController.text != _initialPrice ||
-        _detailsController.text != _initialDetails ||
-        _brandController.text != _initialBrand ||
-        _category != _initialCategory ||
-        _condition != _initialCondition;
-  }
-
   Future<void> _updateProduct() async {
     if (!_validateDetails()) {
         return;
@@ -192,14 +376,16 @@ class _EditRentalPageState extends State<EditRentalPage> {
 
     if (!_formKey.currentState!.validate()) return;
 
-    // Check if any changes were made
-    if (!_hasChanges()) {
-      Navigator.pop(context);
-      return;
-    }
-
     try {
       setState(() => _isLoading = true);
+
+      // Upload new media files to Cloudinary if any
+      List<String> newMediaUrls = [];
+      if (_mediaFiles.isNotEmpty) {
+        newMediaUrls = await Future.wait(
+          _mediaFiles.map((mediaFile) => uploadToCloudinary(mediaFile))
+        );
+      }
 
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
@@ -209,20 +395,27 @@ class _EditRentalPageState extends State<EditRentalPage> {
         return;
       }
 
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.userID)
-          .collection('products')
-          .doc(widget.productID)
-          .update({
+      Map<String, dynamic> updateData = {
         'name': _nameController.text.trim(),
-        'price': double.parse(double.parse(_priceController.text.trim()).toStringAsFixed(2)),
+        'price': double.tryParse(_priceController.text) ?? 0.0,
         'details': _detailsController.text.trim(),
         'brand': _brandController.text.trim(),
         'category': _category,
         'condition': _condition,
         'updatedAt': FieldValue.serverTimestamp(),
-      });
+      };
+
+      // Add media URLs to update data
+      for (int i = 0; i < newMediaUrls.length; i++) {
+        updateData['imageUrl${i + 1}'] = newMediaUrls[i];
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userID)
+          .collection('products')
+          .doc(widget.productID)
+          .update(updateData);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -257,6 +450,86 @@ class _EditRentalPageState extends State<EditRentalPage> {
             child: ListView(
               padding: const EdgeInsets.all(16.0),
               children: [
+
+                // Add media section
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: const Color(0xFF808569),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 3,
+                    ),
+                    icon: const Icon(Icons.upload_file),
+                    label: Text('Select Medias (${_mediaFiles.length}/$maxMedia)'),
+                    onPressed: _mediaFiles.length < maxMedia ? _pickMediaFiles : null,
+                  ),
+                  
+                  // Media preview
+                  if (_mediaFiles.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: _mediaFiles.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final mediaFile = entry.value;
+                            return Stack(
+                              children: [
+                                GestureDetector(
+                                    onTap: () => _showMediaPreview(mediaFile),
+                                    child: Padding(
+                                      padding: 
+                                        const EdgeInsets.only(right: 8.0),
+                                      child: mediaFile.path.endsWith('.mp4') ||
+                                              mediaFile.path.endsWith('.mov')
+                                          ? VideoThumbnail(
+                                              videoFile: mediaFile,
+                                              width: 120,
+                                              height: 120,
+                                            )
+                                          : Image.file(
+                                              mediaFile,
+                                              width: 120,
+                                              height: 120,
+                                              fit: BoxFit.cover,
+                                            ),
+                                      ),
+                                    ),
+                                Positioned(
+                                  top: 0,
+                                  right: 0,
+                                  child: IconButton(
+                                    icon: const Icon(Icons.close, color: Colors.red),
+                                    onPressed: () async {
+      // Remove from Firestore first
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userID)
+          .collection('products')
+          .doc(widget.productID)
+          .update({
+        'imageUrl${index + 1}': '',
+      });
+
+      // Then remove from UI
+      setState(() {
+        _mediaFiles.removeAt(index);
+        _mediaUrls.removeAt(index);
+      });
+    },
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+
                 // Add these widgets in the ListView children
                 DropdownButtonFormField<String>(
                   value: _category,

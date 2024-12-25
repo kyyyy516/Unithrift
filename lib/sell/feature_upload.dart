@@ -435,86 +435,71 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
     }
   }
 
-  // Replace the _pickImages method with this:
+  // Add media picking method
   void _pickMediaFiles() async {
     final picker = ImagePicker();
     final pickedFiles = await picker.pickMultipleMedia();
 
-    // Count existing videos
-  int currentVideoCount = _mediaFiles.where((file) => 
-    file.path.toLowerCase().endsWith('.mp4') || 
-    file.path.toLowerCase().endsWith('.mov')
-  ).length;
+    int currentVideoCount = _mediaFiles.where((file) => 
+      file.path.toLowerCase().endsWith('.mp4') || 
+      file.path.toLowerCase().endsWith('.mov')
+    ).length;
 
-  // Filter and process new files
-  List<File> newFiles = [];
-  List<File> imageFiles = [];
-  File? videoFile;
+    List<File> newFiles = [];
+    List<File> imageFiles = [];
+    File? videoFile;
 
-  for (var file in pickedFiles) {
-    String path = file.path.toLowerCase();
-    bool isVideo = path.endsWith('.mp4') || path.endsWith('.mov');
-    
-    if (isVideo && currentVideoCount < maxVideo && videoFile == null) {
-      videoFile = File(file.path);
-    } else if (path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png')) {
-      imageFiles.add(File(file.path));
+    for (var file in pickedFiles) {
+      String path = file.path.toLowerCase();
+      if (path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png')) {
+        imageFiles.add(File(file.path));
+      } else if (path.endsWith('.mp4') || path.endsWith('.mov') && currentVideoCount < maxVideo && videoFile == null) {
+        videoFile = File(file.path);
+      }
     }
-  }
 
-  // Arrange files with video first if present
-  if (videoFile != null) {
-    newFiles.add(videoFile);
-  }
-  newFiles.addAll(imageFiles);
+    // Arrange files with video first
+    if (videoFile != null) {
+      newFiles = [videoFile];
+    }
+    newFiles.addAll(imageFiles);
 
-  // Check if total files would exceed maximum
-  if (_mediaFiles.length + newFiles.length > maxMedia) {
-    newFiles = newFiles.take(maxMedia - _mediaFiles.length).toList();
-  }
+    if (_mediaFiles.length + newFiles.length > maxMedia) {
+      newFiles = newFiles.take(maxMedia - _mediaFiles.length).toList();
+    }
 
     setState(() {
       if (_mediaFiles.isEmpty) {
-    _mediaFiles = newFiles;
-  } else {
-    // Get all videos (existing and new)
-    List<File> allVideos = [
-      ..._mediaFiles.where((file) => 
-        file.path.toLowerCase().endsWith('.mp4') || 
-        file.path.toLowerCase().endsWith('.mov')
-      ),
-      ...newFiles.where((file) => 
-        file.path.toLowerCase().endsWith('.mp4') || 
-        file.path.toLowerCase().endsWith('.mov')
-      )
-    ];
-    
-    // Take only the first video if there are multiple
-    if (allVideos.length > 1) {
-      allVideos = [allVideos.first];
-    }
-    
-    // Get all images (existing and new)
-    List<File> allImages = [
-      ..._mediaFiles.where((file) => 
-        !file.path.toLowerCase().endsWith('.mp4') && 
-        !file.path.toLowerCase().endsWith('.mov')
-      ),
-      ...newFiles.where((file) => 
-        !file.path.toLowerCase().endsWith('.mp4') && 
-        !file.path.toLowerCase().endsWith('.mov')
-      )
-    ];
+        _mediaFiles = newFiles;
+      } else {
+        List<File> allVideos = [
+          ..._mediaFiles.where((file) => 
+            file.path.toLowerCase().endsWith('.mp4') || 
+            file.path.toLowerCase().endsWith('.mov')
+          ),
+          ...newFiles.where((file) => 
+            file.path.toLowerCase().endsWith('.mp4') || 
+            file.path.toLowerCase().endsWith('.mov')
+          )
+        ];
+        
+        List<File> allImages = [
+          ..._mediaFiles.where((file) => 
+            file.path.toLowerCase().endsWith('.jpg') || 
+            file.path.toLowerCase().endsWith('.jpeg') || 
+            file.path.toLowerCase().endsWith('.png')
+          ),
+          ...newFiles.where((file) => 
+            file.path.toLowerCase().endsWith('.jpg') || 
+            file.path.toLowerCase().endsWith('.jpeg') || 
+            file.path.toLowerCase().endsWith('.png')
+          )
+        ];
 
-    // Combine with video first, then images
-    _mediaFiles = [...allVideos, ...allImages];
-    
-    // Respect maximum limit
-    if (_mediaFiles.length > maxMedia) {
-      _mediaFiles = _mediaFiles.take(maxMedia).toList();
-    }
-  }
+        _mediaFiles = [...allVideos, ...allImages];
+      }
     });
+  
 
     // Show messages only when limits are exceeded
     if (pickedFiles.length > maxMedia) {
