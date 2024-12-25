@@ -62,6 +62,8 @@ dependencies:
   email_otp: ^3.0.2
   syncfusion_flutter_datepicker: ^28.1.33
   fl_chart: ^0.69.2
+  path: 1.9.0  # Align with flutter_test requirement
+
 
 
 dev_dependencies:
