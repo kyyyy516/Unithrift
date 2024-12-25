@@ -11,8 +11,8 @@ class VideoThumbnail extends StatefulWidget {
     required this.videoFile,
     this.width = 120,
     this.height = 120,
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   State<VideoThumbnail> createState() => _VideoThumbnailState();
@@ -34,7 +34,7 @@ class _VideoThumbnailState extends State<VideoThumbnail> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: widget.width,
       height: widget.height,
       child: _controller.value.isInitialized

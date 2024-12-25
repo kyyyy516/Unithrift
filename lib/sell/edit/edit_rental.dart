@@ -1,10 +1,7 @@
-import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart' hide CarouselController;
 import 'package:video_player/video_player.dart';
-import 'package:chewie/chewie.dart';
-import 'dart:math' show min; // Add this import at the top
 import 'package:unithrift/firestore_service.dart';
 
 class EditRentalPage extends StatefulWidget {

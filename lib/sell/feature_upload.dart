@@ -5,15 +5,20 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:video_player/video_player.dart';
 import '../services/cloudinary_service.dart';
-import '../services/db_service.dart';
 import '../sell/publish_success.dart';
 import '../sell/preview_video.dart';
 import '../sell/video_thumbnail.dart';
+import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as path;
 
-class UploadFeaturePage extends StatefulWidget {
-  //const TestPage(this.noAppBar, {super.key});
-  //final bool noAppBar;
-  const UploadFeaturePage({super.key});
+
+class UploadFeaturePage extends StatefulWidget {  
+  final Map<String, String>? prefillData;
+
+  const UploadFeaturePage({
+    super.key,
+    this.prefillData,
+  });
 
   @override
   State<UploadFeaturePage> createState() => _UploadFeaturePageState();
@@ -28,7 +33,6 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
 
   // Support up to 5 medias
   List<File> _mediaFiles = [];
-  //List<FilePickerResult?> _mediaFiles = [];
   List<String> _mediaUrls = [];
   bool _isUploading = false;
   static const int maxMedia = 5;
@@ -55,6 +59,76 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
   ];
   // Selected category
   String? _selectedCategory;
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fill the data if available
+    if (widget.prefillData != null) {
+      _nameController.text = widget.prefillData!['name'] ?? '';
+      _priceController.text = widget.prefillData!['price'] ?? '';
+      _detailsController.text = widget.prefillData!['details'] ?? '';
+      _brandController.text = widget.prefillData!['brand'] ?? '';
+      _selectedCategory = widget.prefillData!['category'];
+      _selectedCondition = widget.prefillData!['condition'];
+
+      // Create a List<String> for media URLs
+      List<String> mediaUrls = [];
+      
+      // Collect all non-null image URLs with null check
+      for (int i = 1; i <= 5; i++) {
+        String? imageUrl = widget.prefillData!['imageUrl$i'];
+        if (imageUrl != null) {
+          mediaUrls.add(imageUrl.toString());
+        }
+      }
+
+      if (mediaUrls.isNotEmpty) {
+        _downloadAndSetMediaFiles(mediaUrls);
+      }
+    }
+  }
+
+  Future<void> _downloadAndSetMediaFiles(List<String> urls) async {
+  List<File> videoFiles = [];
+  List<File> imageFiles = [];
+
+  for (String url in urls) {
+    if (url.isNotEmpty) {
+      final response = await http.get(Uri.parse(url));
+      final bytes = response.bodyBytes;
+      final fileName = path.basename(url);
+      final tempFile = File('${Directory.systemTemp.path}/$fileName');
+      await tempFile.writeAsBytes(bytes);
+      
+      // Categorize files based on extension
+      String filePath = url.toLowerCase();
+      if (filePath.endsWith('.mp4') || filePath.endsWith('.mov')) {
+       if (videoFiles.isEmpty) { // Only add if no video exists yet
+          videoFiles.add(tempFile);
+        }
+      } else if (filePath.endsWith('.jpg') || 
+                filePath.endsWith('.jpeg') || 
+                filePath.endsWith('.png')) {
+        imageFiles.add(tempFile);
+      }
+    }
+  }
+
+  // Combine files ensuring video is first
+  List<File> allFiles = [...videoFiles, ...imageFiles];
+  
+  // Respect maximum media limit
+  if (allFiles.length > maxMedia) {
+    allFiles = allFiles.take(maxMedia).toList();
+  }
+
+  setState(() {
+    _mediaFiles = allFiles;
+  });
+}
+
+
 
   // Enhanced product validation method
   bool _validateProductDetails() {
@@ -400,23 +474,46 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
   }
 
     setState(() {
-      // If this is first selection, directly set the files
-    if (_mediaFiles.isEmpty) {
-      _mediaFiles = newFiles;
-    } else {
-      // If adding to existing files, maintain video first order
-      List<File> existingVideo = _mediaFiles.where((file) => 
+      if (_mediaFiles.isEmpty) {
+    _mediaFiles = newFiles;
+  } else {
+    // Get all videos (existing and new)
+    List<File> allVideos = [
+      ..._mediaFiles.where((file) => 
         file.path.toLowerCase().endsWith('.mp4') || 
         file.path.toLowerCase().endsWith('.mov')
-      ).toList();
-      
-      List<File> existingImages = _mediaFiles.where((file) => 
+      ),
+      ...newFiles.where((file) => 
+        file.path.toLowerCase().endsWith('.mp4') || 
+        file.path.toLowerCase().endsWith('.mov')
+      )
+    ];
+    
+    // Take only the first video if there are multiple
+    if (allVideos.length > 1) {
+      allVideos = [allVideos.first];
+    }
+    
+    // Get all images (existing and new)
+    List<File> allImages = [
+      ..._mediaFiles.where((file) => 
         !file.path.toLowerCase().endsWith('.mp4') && 
         !file.path.toLowerCase().endsWith('.mov')
-      ).toList();
+      ),
+      ...newFiles.where((file) => 
+        !file.path.toLowerCase().endsWith('.mp4') && 
+        !file.path.toLowerCase().endsWith('.mov')
+      )
+    ];
 
-      _mediaFiles = [...existingVideo, ...existingImages, ...newFiles];
+    // Combine with video first, then images
+    _mediaFiles = [...allVideos, ...allImages];
+    
+    // Respect maximum limit
+    if (_mediaFiles.length > maxMedia) {
+      _mediaFiles = _mediaFiles.take(maxMedia).toList();
     }
+  }
     });
 
     // Show messages only when limits are exceeded
@@ -462,21 +559,13 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
 
   @override
   Widget build(BuildContext context) {
-    // return (widget.noAppBar)
-    // ? Scaffold(
-    //   body: SizedBox.shrink(), // Empty space, no UI elements
-    // )
-    // :
     return Scaffold(
       appBar: AppBar(
         title: Text(
           "What's your item?",
           style: TextStyle(
-              //fontWeight: FontWeight.bold,
-              //fontSize: 28.0,
               ),
         ),
-        //centerTitle: true,
       ),
       body: 
           SingleChildScrollView(
@@ -486,11 +575,6 @@ class _UploadFeaturePageState extends State<UploadFeaturePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // const SizedBox(height: 1),
-                    // const Padding(
-                    //   padding: EdgeInsets.symmetric(vertical: 5.0),
-
-                    // ),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         foregroundColor: Colors.white, // Text color

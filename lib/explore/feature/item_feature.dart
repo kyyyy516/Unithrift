@@ -118,6 +118,46 @@ class _ItemFeaturePageState extends State<ItemFeaturePage> {
     fetchGlobalSellerreviews();
     _initializeMediaContent();
     fetchSellerProfile();
+    _incrementProductViews(); // zx
+  }
+
+  // zx
+  Future<void> _incrementProductViews() async {
+    try {
+      // Get current user ID
+      final currentUser = FirebaseAuth.instance.currentUser;
+      print('Current User: ${currentUser?.uid}');
+      print('Product Owner: ${widget.product['userId']}');
+
+
+      // Only increment if the viewer is not the product owner
+      if (currentUser != null && currentUser.uid != widget.product['userId']) {
+        print('Incrementing views for product: ${widget.product['productID']}');
+
+        DocumentReference productRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.product['userId'])
+            .collection('products')
+            .doc(widget.product['productID']);
+
+
+            
+            // Get current views count
+            DocumentSnapshot productDoc = await productRef.get();
+            int currentViews = (productDoc.data() as Map<String, dynamic>)['views'] ?? 0;
+
+            // Then increment it
+            await productRef.update({
+              'views': currentViews + 1,
+              });
+              print('Views incremented successfully');
+            }
+            else {
+      print('View not counted: Same user or not logged in');
+    }
+    } catch (e) {
+      print('Error incrementing views: $e');
+    }
   }
 
   // Add this helper method to match ChatList's ID generation

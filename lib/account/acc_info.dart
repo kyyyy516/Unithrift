@@ -14,6 +14,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../sell/my_listing.dart';
 import 'package:unithrift/account/review_section.dart';
+import 'package:unithrift/sell/analytics/analytics_service.dart';
+
 
 class AccountInfo extends StatefulWidget {
   const AccountInfo({super.key});
@@ -240,6 +242,17 @@ class _AccountInfoState extends State<AccountInfo> {
         ),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.insights, color: Colors.black),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AnalyticsPage(),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.share, color: Colors.black),
             onPressed: () {

@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:unithrift/navigation%20bar/bottom_navbar.dart';
-import '../sell/edit/edit_rental.dart';
-import '../sell/edit/edit_feature.dart';
 import 'listing_details.dart';
 
 class AllProductPage extends StatefulWidget {

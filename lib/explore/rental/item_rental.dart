@@ -43,7 +43,42 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
     _initializeMediaContent();
     fetchGlobalSellerreviews();
     fetchSellerProfile();
+    _incrementProductViews(); // zx
   }
+
+  // zx
+  Future<void> _incrementProductViews() async {
+    try {
+      // Get current user ID
+      final currentUser = FirebaseAuth.instance.currentUser;
+
+      // Only increment if the viewer is not the product owner
+      if (currentUser != null && currentUser.uid != widget.product['userId']) {
+
+        DocumentReference productRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.product['userId'])
+            .collection('products')
+            .doc(widget.product['productID']);
+
+
+            
+            // Get current views count
+            DocumentSnapshot productDoc = await productRef.get();
+            int currentViews = (productDoc.data() as Map<String, dynamic>)['views'] ?? 0;
+
+            // Then increment it
+            await productRef.update({
+              'views': currentViews + 1,
+              });
+            }
+      
+            } catch (e) {
+              print('Error incrementing views: $e');
+            }
+  }
+
+  
 
   String? sellerProfileImage;
 

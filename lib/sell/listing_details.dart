@@ -10,6 +10,9 @@ import '../sell/edit/edit_rental.dart';
 import '../sell/edit/edit_service.dart';
 import '../services/cloudinary_service.dart';
 import '../sell/my_listing.dart';
+import '../sell/feature_upload.dart';
+import '../sell/rental_upload.dart';
+import '../sell/service_upload.dart';
 
 class ListingPage extends StatefulWidget {
   final Map<String, dynamic> product;  // Make it optional with ?
@@ -41,6 +44,77 @@ class _ListingPageState extends State<ListingPage> {
      _initializeVideo();
 
   }
+
+  void _duplicateListing() {
+  final listingType = widget.product['type'];
+
+  
+  // Common fields for all types
+  final baseData = {
+    'name': widget.product['name'],
+    'price': widget.product['price'].toString(),
+    'details': widget.product['details'],
+  };
+
+  // Add individual image URLs instead of a list
+  for (int i = 1; i <= 5; i++) {
+    if (widget.product['imageUrl$i'] != null) {
+      baseData['imageUrl$i'] = widget.product['imageUrl$i'];
+    }
+  }
+
+
+  switch (listingType) {
+    case 'feature':
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => UploadFeaturePage(
+            prefillData: {
+              ...baseData,
+              'brand': widget.product['brand'],
+              'category': widget.product['category'],
+              'condition': widget.product['condition'],
+            },
+          ),
+        ),
+      );
+      break;
+
+    case 'rental':
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => UploadRentalPage(
+            prefillData: {
+              ...baseData,
+              'brand': widget.product['brand'],
+              'category': widget.product['category'], 
+              'condition': widget.product['condition'],
+            },
+          ),
+        ),
+      );
+      break;
+
+    case 'service':
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => UploadServicePage(
+            prefillData: {
+              ...baseData,
+              'pricingDetails': widget.product['pricingDetails'],
+              'availability': widget.product['availability'],
+            },
+          ),
+        ),
+      );
+      break;
+  }
+}
+
+
 
 
  Future<void> _initializeVideo() async {//yy
@@ -596,20 +670,43 @@ images.removeWhere((image) =>
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-    icon: const Icon(Icons.arrow_back),
-    onPressed: () {
-      if (widget.fromPublishSuccessful) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const AllProductPage()),
-        );
-      } else {
-        Navigator.pop(context);
-      }
-    },
-  ),
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (widget.fromPublishSuccessful) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const AllProductPage()),
+              );
+            } else {
+              Navigator.pop(context);
+            }
+          },
+        ),
         title: Text(widget.product['name'] ?? 'Product Details'),
         backgroundColor: Colors.white,
+
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              if (value == 'duplicate') {
+                _duplicateListing();
+              }
+            },
+            itemBuilder: (BuildContext context) => [
+              const PopupMenuItem<String>(
+                value: 'duplicate',
+                child: Row(
+                  children: [
+                    Icon(Icons.content_copy, color: Color(0xFF808569)),
+                    SizedBox(width: 8),
+                    Text('Duplicate Listing'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+      ],
       ),
       body: Stack(
         children: [

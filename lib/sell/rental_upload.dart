@@ -3,16 +3,21 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:video_player/video_player.dart';
 import '../services/cloudinary_service.dart';
-import '../services/db_service.dart';
 import '../sell/publish_success.dart';
 import '../sell/preview_video.dart';
 import '../sell/video_thumbnail.dart';
+import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as path;
 
 class UploadRentalPage extends StatefulWidget {
-  const UploadRentalPage({super.key});
+  final Map<String, String>? prefillData;
+
+  const UploadRentalPage({
+    super.key,
+    this.prefillData,
+  });
 
   @override
   State<UploadRentalPage> createState() => _UploadRentalPageState();
@@ -31,6 +36,7 @@ class _UploadRentalPageState extends State<UploadRentalPage> {
   bool _isUploading = false;
   static const int maxMedia = 5;
   static const int maxVideo = 1;
+
 
   // Categories
   final List<String> _categories = [
@@ -55,6 +61,54 @@ class _UploadRentalPageState extends State<UploadRentalPage> {
     'Repair'
   ];
   String? _selectedCondition;
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (widget.prefillData != null) {
+      _nameController.text = widget.prefillData!['name'] ?? '';
+      _priceController.text = widget.prefillData!['price'] ?? '';
+      _detailsController.text = widget.prefillData!['details'] ?? '';
+      _brandController.text = widget.prefillData!['brand'] ?? '';
+
+      // Handle dropdowns
+      setState(() {
+        _selectedCategory = widget.prefillData!['category'];
+        _selectedCondition = widget.prefillData!['condition'];
+      });
+
+      // Create a List<String> for media URLs
+      List<String> mediaUrls = [];
+      
+      // Collect all non-null image URLs with null check
+      for (int i = 1; i <= 5; i++) {
+        String? imageUrl = widget.prefillData!['imageUrl$i'];
+        if (imageUrl != null) {
+          mediaUrls.add(imageUrl.toString());
+        }
+      }
+
+      if (mediaUrls.isNotEmpty) {
+        _downloadAndSetMediaFiles(mediaUrls);
+      }
+    }
+  }
+
+  Future<void> _downloadAndSetMediaFiles(List<String> urls) async {
+    for (String url in urls) {
+      if (url.isNotEmpty) {
+        final response = await http.get(Uri.parse(url));
+        final bytes = response.bodyBytes;
+        final tempFile = File('${Directory.systemTemp.path}/${path.basename(url)}');
+        await tempFile.writeAsBytes(bytes);
+        
+        setState(() {
+          _mediaFiles.add(tempFile);
+        });
+      }
+    }
+  }
 
   // Enhanced product validation method
   bool _validateProductDetails() {
