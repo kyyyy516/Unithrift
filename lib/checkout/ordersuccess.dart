@@ -276,33 +276,6 @@ class _OrderSuccessPageState extends State<OrderSuccessPage> {
                   ),
                 ),
               ),
-              SizedBox(
-  width: double.infinity,
-  child: ElevatedButton(
-    onPressed: () {
-  final sellerUserId = widget.cartItems.first['sellerUserId'];
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) =>
-          TransactionHistoryPage(userId: sellerUserId),
-    ),
-  );
-},
-    style: ElevatedButton.styleFrom(
-      backgroundColor: const Color(0xFF808569),
-      padding: const EdgeInsets.symmetric(vertical: 15),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(25),
-      ),
-    ),
-    child: const Text(
-      'View Transaction History',
-      style: TextStyle(color: Colors.white),
-    ),
-  ),
-),
-
               const SizedBox(height: 15),
               GestureDetector(
                 onTap: () {
