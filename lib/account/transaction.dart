@@ -4,7 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'order_info.dart';
 
 class TransactionHistoryPage extends StatefulWidget {
-  const TransactionHistoryPage({Key? key}) : super(key: key);
+  final String userId;  // Accept userId to show transactions for any user
+
+  const TransactionHistoryPage({Key? key, required this.userId}) : super(key: key);
 
   @override
   State<TransactionHistoryPage> createState() =>
@@ -12,17 +14,14 @@ class TransactionHistoryPage extends StatefulWidget {
 }
 
 class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
-  final user = FirebaseAuth.instance.currentUser;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
           'Transaction History',
-        style: TextStyle(
-          fontSize: 15,  // Adjust this to a smaller size (default is around 20-22)
-          //fontWeight: FontWeight.w500,  // Optional: Adjust weight if needed
+          style: TextStyle(
+            fontSize: 15,  // Smaller font size
           ),
         ),
         backgroundColor: const Color(0xFFE5E8D9),
@@ -30,7 +29,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
       body: StreamBuilder(
         stream: FirebaseFirestore.instance
             .collection('users')
-            .doc(user?.uid)
+            .doc(widget.userId)  // Use the userId passed to the widget
             .collection('orders')
             .orderBy('orderDate', descending: true)
             .snapshots(),
@@ -55,7 +54,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                 margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                 child: ListTile(
                   leading: Image.network(
-                    order['imageUrl'] ?? '',
+                    order['imageUrl'] ?? 'https://via.placeholder.com/150',
                     width: 60,
                     height: 60,
                     fit: BoxFit.cover,
@@ -69,7 +68,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                       context,
                       MaterialPageRoute(
                         builder: (context) =>
-                            OrderDetailsPage(orderId: order['orderId']),
+                            OrderInfo(orderId: order['orderId']),  // Navigate to Order Details
                       ),
                     );
                   },

@@ -570,7 +570,9 @@ class _AccountInfoState extends State<AccountInfo> {
                                 ReviewsSection(
                                     userId: FirebaseAuth.instance.currentUser!
                                         .uid), // Pass the userId
-                              const TransactionHistoryPage(),
+                              TransactionHistoryPage(
+                                userId: FirebaseAuth.instance.currentUser!.uid,
+                              ),
                             ],
                           ),
                         ),

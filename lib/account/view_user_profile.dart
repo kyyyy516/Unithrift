@@ -4,6 +4,7 @@ import 'package:unithrift/account/review_section.dart';
 import 'package:unithrift/explore/feature/item_feature.dart';
 import 'package:unithrift/explore/rental/item_rental.dart';
 import 'package:unithrift/explore/service/item_service.dart';
+import 'package:unithrift/account/transaction.dart';
 
 class UserProfilePage extends StatelessWidget {
   final String userId;
@@ -130,7 +131,7 @@ class UserProfilePage extends StatelessWidget {
                         tabs: [
                           Tab(text: 'Listing'),
                           Tab(text: 'Review'),
-                          Tab(text: 'About'),
+                          Tab(text: 'Transaction'),
                         ],
                       ),
                       Container(
@@ -139,7 +140,7 @@ class UserProfilePage extends StatelessWidget {
                           children: [
                             FilteredUserListings(userId: userId),
                             ReviewsSection(userId: userId),
-                            AboutSection(userData: userData),
+                            TransactionHistoryPage(userId: userId),  // Pass userId here
                           ],
                         ),
                       ),
@@ -420,24 +421,6 @@ class _FilteredUserListingsState extends State<FilteredUserListings> {
               ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-// About Section
-class AboutSection extends StatelessWidget {
-  final Map<String, dynamic> userData;
-
-  const AboutSection({Key? key, required this.userData}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Text(
-        userData['about'] ?? 'This user has not added an about section.',
-        style: const TextStyle(fontSize: 16),
       ),
     );
   }

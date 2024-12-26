@@ -280,13 +280,15 @@ class _OrderSuccessPageState extends State<OrderSuccessPage> {
   width: double.infinity,
   child: ElevatedButton(
     onPressed: () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const TransactionHistoryPage(),
-        ),
-      );
-    },
+  final sellerUserId = widget.cartItems.first['sellerUserId'];
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) =>
+          TransactionHistoryPage(userId: sellerUserId),
+    ),
+  );
+},
     style: ElevatedButton.styleFrom(
       backgroundColor: const Color(0xFF808569),
       padding: const EdgeInsets.symmetric(vertical: 15),
