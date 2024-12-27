@@ -129,7 +129,6 @@ class _ItemFeaturePageState extends State<ItemFeaturePage> {
       print('Current User: ${currentUser?.uid}');
       print('Product Owner: ${widget.product['userId']}');
 
-
       // Only increment if the viewer is not the product owner
       if (currentUser != null && currentUser.uid != widget.product['userId']) {
         print('Incrementing views for product: ${widget.product['productID']}');
@@ -140,21 +139,19 @@ class _ItemFeaturePageState extends State<ItemFeaturePage> {
             .collection('products')
             .doc(widget.product['productID']);
 
+        // Get current views count
+        DocumentSnapshot productDoc = await productRef.get();
+        int currentViews =
+            (productDoc.data() as Map<String, dynamic>)['views'] ?? 0;
 
-            
-            // Get current views count
-            DocumentSnapshot productDoc = await productRef.get();
-            int currentViews = (productDoc.data() as Map<String, dynamic>)['views'] ?? 0;
-
-            // Then increment it
-            await productRef.update({
-              'views': currentViews + 1,
-              });
-              print('Views incremented successfully');
-            }
-            else {
-      print('View not counted: Same user or not logged in');
-    }
+        // Then increment it
+        await productRef.update({
+          'views': currentViews + 1,
+        });
+        print('Views incremented successfully');
+      } else {
+        print('View not counted: Same user or not logged in');
+      }
     } catch (e) {
       print('Error incrementing views: $e');
     }
@@ -291,7 +288,9 @@ class _ItemFeaturePageState extends State<ItemFeaturePage> {
     final urls = [
       widget.product['imageUrl1'],
       widget.product['imageUrl2'],
-      widget.product['imageUrl3']
+      widget.product['imageUrl3'],
+      widget.product['imageUrl4'],
+      widget.product['imageUrl5']
     ];
 
     for (String? url in urls) {
@@ -1121,6 +1120,12 @@ class _ItemFeaturePageState extends State<ItemFeaturePage> {
     }
     if (widget.product['imageUrl3'] != null) {
       images.add(widget.product['imageUrl3']);
+    }
+    if (widget.product['imageUrl4'] != null) {
+      images.add(widget.product['imageUrl4']);
+    }
+    if (widget.product['imageUrl5'] != null) {
+      images.add(widget.product['imageUrl5']);
     }
 
     images.removeWhere(

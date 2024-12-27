@@ -54,31 +54,26 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
 
       // Only increment if the viewer is not the product owner
       if (currentUser != null && currentUser.uid != widget.product['userId']) {
-
         DocumentReference productRef = FirebaseFirestore.instance
             .collection('users')
             .doc(widget.product['userId'])
             .collection('products')
             .doc(widget.product['productID']);
 
+        // Get current views count
+        DocumentSnapshot productDoc = await productRef.get();
+        int currentViews =
+            (productDoc.data() as Map<String, dynamic>)['views'] ?? 0;
 
-            
-            // Get current views count
-            DocumentSnapshot productDoc = await productRef.get();
-            int currentViews = (productDoc.data() as Map<String, dynamic>)['views'] ?? 0;
-
-            // Then increment it
-            await productRef.update({
-              'views': currentViews + 1,
-              });
-            }
-      
-            } catch (e) {
-              print('Error incrementing views: $e');
-            }
+        // Then increment it
+        await productRef.update({
+          'views': currentViews + 1,
+        });
+      }
+    } catch (e) {
+      print('Error incrementing views: $e');
+    }
   }
-
-  
 
   String? sellerProfileImage;
 
@@ -225,7 +220,9 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
     final urls = [
       widget.product['imageUrl1'],
       widget.product['imageUrl2'],
-      widget.product['imageUrl3']
+      widget.product['imageUrl3'],
+      widget.product['imageUrl4'],
+      widget.product['imageUrl5']
     ];
 
     for (String? url in urls) {
@@ -1525,6 +1522,12 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
     }
     if (widget.product['imageUrl3'] != null) {
       images.add(widget.product['imageUrl3']);
+    }
+    if (widget.product['imageUrl4'] != null) {
+      images.add(widget.product['imageUrl4']);
+    }
+    if (widget.product['imageUrl5'] != null) {
+      images.add(widget.product['imageUrl5']);
     }
 
     images.removeWhere(
