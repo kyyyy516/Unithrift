@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:unithrift/explore/feature/item_feature.dart';
 import 'package:unithrift/account/view_user_profile.dart';
+import 'package:unithrift/explore/rental/item_rental.dart';
+import 'package:unithrift/explore/service/item_service.dart';
 
 class OrderInfo extends StatefulWidget {
   final String orderId;
@@ -126,11 +128,46 @@ class _OrderInfoState extends State<OrderInfo> {
                   Center(
                     child: ElevatedButton(
                       onPressed: () async {
+                        final productType = order!['type'];
+                        final sellerUserId = order!['sellerUserId'];
+                        final productID = order!['productID'];
+
+                        // Fetch product from the seller's products subcollection
+                        final productDoc = await FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(sellerUserId)
+                            .collection('products')
+                            .doc(productID)
+                            .get();
+
+                        // Include the productID in the data
+                        final productData = {
+                          ...productDoc.data() ?? {},
+                          'productID': productID,
+                          'userId': sellerUserId,
+                        };
+
+                        Widget destinationPage;
+                        switch (productType.toString().toLowerCase()) {
+                          case 'rental':
+                            destinationPage =
+                                ItemRentalPage(product: productData);
+                            break;
+                          case 'service':
+                            destinationPage =
+                                ItemServicePage(product: productData);
+                            break;
+                          case 'feature':
+                          default:
+                            destinationPage =
+                                ItemFeaturePage(product: productData);
+                            break;
+                        }
+
                         await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) =>
-                                ItemFeaturePage(product: order!),
+                            builder: (context) => destinationPage,
                           ),
                         );
                         if (order!['sellerUserId'] != null) {
