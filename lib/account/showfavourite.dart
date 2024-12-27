@@ -275,30 +275,46 @@ class _ShowFavoritesState extends State<ShowFavorites> {
     );
   }
 
-  void _navigateToItemDetails(Map<String, dynamic> item) {
-    Widget targetPage;
+  void _navigateToItemDetails(Map<String, dynamic> item) async {
+  // Fetch complete product data including seller info
+  final productDoc = await FirebaseFirestore.instance
+      .collection('users')
+      .doc(item['sellerUserId'])
+      .collection('products')
+      .doc(item['productID'])
+      .get();
 
+  if (productDoc.exists) {
+    final completeProduct = {
+      ...productDoc.data()!,
+      'productID': item['productID'],
+      'userId': item['sellerUserId'],
+      'username': item['sellerName'],
+      'userEmail': item['sellerEmail'],
+    };
+
+    Widget targetPage;
     switch (item['type']) {
       case 'feature':
-        targetPage = ItemFeaturePage(product: item);
+        targetPage = ItemFeaturePage(product: completeProduct);
         break;
       case 'rental':
-        targetPage = ItemRentalPage(product: item);
+        targetPage = ItemRentalPage(product: completeProduct);
         break;
       case 'service':
-        targetPage = ItemServicePage(product: item);
+        targetPage = ItemServicePage(product: completeProduct);
         break;
       default:
-        targetPage = ItemFeaturePage(product: item);
+        targetPage = ItemFeaturePage(product: completeProduct);
     }
 
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => targetPage,
-      ),
+      MaterialPageRoute(builder: (context) => targetPage),
     );
   }
+}
+
 
   Widget _buildFavoriteItem(Map<String, dynamic> item) {
     return Card(

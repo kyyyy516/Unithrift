@@ -4,21 +4,21 @@ import 'package:flutter/material.dart';
 import 'package:email_otp/email_otp.dart';
 import 'package:unithrift/checkout/ordersuccess.dart';
 
-class CIMBTransactionPage extends StatefulWidget {
+class maybankTransactionPage extends StatefulWidget {
   final double amount;
   final String userEmail;
 
-  const CIMBTransactionPage({
+  const maybankTransactionPage({
     Key? key,
     required this.amount,
     required this.userEmail, // Add this
   }) : super(key: key);
 
   @override
-  State<CIMBTransactionPage> createState() => _CIMBTransactionPageState();
+  State<maybankTransactionPage> createState() => _maybankTransactionPageState();
 }
 
-class _CIMBTransactionPageState extends State<CIMBTransactionPage> {
+class _maybankTransactionPageState extends State<maybankTransactionPage> {
   final TextEditingController _otpController = TextEditingController();
 
   @override
@@ -37,10 +37,10 @@ class _CIMBTransactionPageState extends State<CIMBTransactionPage> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          backgroundColor: Color(0xFFEE3124), // CIMB red color
+          backgroundColor: Color.fromARGB(255, 252,204,4), 
           title: Image.asset(
-            'assets/cimb2.png',
-            height: 50,
+            'assets/maybank2.png',
+            height: 100,
             fit: BoxFit.contain,
           ),
           centerTitle: true,
@@ -116,9 +116,9 @@ class _CIMBTransactionPageState extends State<CIMBTransactionPage> {
                   padding: EdgeInsets.symmetric(horizontal: 40),
                   child: ElevatedButton(
                     onPressed: () => _showOTPDialog(context),
-                    child: Text('Confirm'),
+                    child: Text('Confirm',style: TextStyle(color: Colors.black)), // Added black text color,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFFEE3124),
+                      backgroundColor: Color.fromARGB(255, 252,204,4),
                       minimumSize: Size(200, 45),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -197,7 +197,6 @@ class _CIMBTransactionPageState extends State<CIMBTransactionPage> {
                     onPressed: () => Navigator.pop(context),
                     child: Text('Cancel'),
                   ),
-                  // In the verify button onPressed callback:
                   // In the verify button onPressed callback:
                   TextButton(
                     onPressed: () async {

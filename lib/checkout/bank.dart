@@ -4,7 +4,7 @@ class BankSelectionPage extends StatelessWidget {
   final List<Map<String, dynamic>> banks = [
     {'name': 'Maybank', 'icon': 'assets/maybank.png'},
     {'name': 'CIMB', 'icon': 'assets/cimb.png'},
-    {'name': 'Hong Leong', 'icon': 'assets/hongleong.png'},
+    {'name': 'HongLeong', 'icon': 'assets/hongleong.png'},
   ];
 
   @override

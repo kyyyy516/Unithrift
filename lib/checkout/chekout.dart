@@ -3,6 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:unithrift/checkout/cimb/cimblogin.dart';
 import 'package:unithrift/checkout/cimb/cimbredirect.dart';
+import 'package:unithrift/checkout/hongleong/hongleonglogin.dart';
+import 'package:unithrift/checkout/hongleong/hongleongredirect.dart';
+import 'package:unithrift/checkout/maybank/maybanklogin.dart';
+import 'package:unithrift/checkout/maybank/maybankredirect.dart';
 import 'package:unithrift/checkout/ordersuccess.dart';
 import 'package:unithrift/checkout/payment.dart';
 
@@ -54,26 +58,24 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
   }
 
-  Future<void> _handlePayment() async {
-    // Validate address for delivery
-    if (selectedDealMethod == 'delivery' &&
-        addressController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a delivery address')),
-      );
-      return;
-    }
+  // Update the _handlePayment method
+Future<void> _handlePayment() async {
+  if (selectedDealMethod == 'delivery' && addressController.text.trim().isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Please enter a delivery address')),
+    );
+    return;
+  }
 
-    if (selectedPaymentMethod == 'fpx') {
-      // FPX payment flow
+  // Handle FPX payments
+  if (selectedPaymentMethod == 'fpx') {
+    if (selectedBank?['name'] == 'CIMB') {
       await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => CIMBRedirectPage(amount: finalTotal),
         ),
       );
-
-      await Future.delayed(const Duration(seconds: 2));
 
       final result = await Navigator.pushReplacement(
         context,
@@ -83,114 +85,135 @@ class _CheckoutPageState extends State<CheckoutPage> {
       );
 
       if (result == true) {
-        final user = FirebaseAuth.instance.currentUser;
+        await _processOrder();
+      }
+    } else if (selectedBank?['name'] == 'Maybank') {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => maybankRedirectPage(amount: finalTotal),
+        ),
+      );
 
-        for (var item in widget.cartItems) {
-          final orderRef =
-              FirebaseFirestore.instance.collection('orders').doc();
+      final result = await Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => maybankLoginPage(amount: finalTotal),
+        ),
+      );
 
-          // Fetch buyer's details
-          final buyerDoc = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user?.uid)
-              .get();
-          final buyerData = buyerDoc.data() ?? {};
+      if (result == true) {
+        await _processOrder();
+      }
+    } else if (selectedBank?['name'] == 'HongLeong') {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => hongleongRedirectPage(amount: finalTotal),
+        ),
+      );
 
-          // Prepare order data
-          final orderData = {
-            'orderId': 'ORD${DateTime.now().millisecondsSinceEpoch}',
-            'trackingNo': 'TRK${DateTime.now().millisecondsSinceEpoch}',
-            'productID': item['productID'],
-            'name': item['name'],
-            'price': item['price'],
-            'quantity': item['quantity'] ?? 1,
-            'totalAmount': item['price'] * (item['quantity'] ?? 1),
-            'imageUrl1': item['imageUrl1'],
-            'condition': item['condition'],
-            'type': item['type'] ?? 'item',
-            'serviceDate': item['serviceDate'] ?? '',
-            'orderDate': FieldValue.serverTimestamp(),
-            'status': 'Processing',
-            'isMeetup': selectedDealMethod == 'meetup',
+      final result = await Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => hongleongLoginPage(amount: finalTotal),
+        ),
+      );
+
+      if (result == true) {
+        await _processOrder();
+      }
+    }
+  } 
+  // Handle credit card and TNG payments
+  else if (selectedPaymentMethod == 'credit_card' || selectedPaymentMethod == 'tng') {
+    await _processOrder();
+  }
+}
+
+
+
+// Add this helper method to process the order
+Future<void> _processOrder() async {
+  final user = FirebaseAuth.instance.currentUser;
+
+  for (var item in widget.cartItems) {
+    final orderRef = FirebaseFirestore.instance.collection('orders').doc();
+    final buyerDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user?.uid)
+        .get();
+    final buyerData = buyerDoc.data() ?? {};
+
+    final orderData = {
+      'orderId': 'ORD${DateTime.now().millisecondsSinceEpoch}',
+      'trackingNo': 'TRK${DateTime.now().millisecondsSinceEpoch}',
+      'productID': item['productID'],
+      'name': item['name'],
+      'price': item['price'],
+      'quantity': item['quantity'] ?? 1,
+      'totalAmount': item['price'] * (item['quantity'] ?? 1),
+      'imageUrl1': item['imageUrl1'],
+      'condition': item['condition'],
+      'type': item['type'] ?? 'item',
+      'serviceDate': item['serviceDate'] ?? '',
+      'orderDate': FieldValue.serverTimestamp(),
+      'status': 'Pending',
+      'isMeetup': selectedDealMethod == 'meetup',
+      'address': selectedDealMethod == 'delivery'
+          ? addressController.text
+          : 'Meetup Address',
+      'buyerId': user?.uid,
+      'buyerName': buyerData['username'] ?? 'Unknown Buyer',
+      'buyerEmail': buyerData['email'] ?? 'No Email',
+      'sellerUserId': item['sellerUserId'],
+      'sellerName': item['sellerName'],
+      'sellerEmail': item['sellerEmail'],
+      'timestamp': FieldValue.serverTimestamp(),
+    };
+
+    await Future.wait([
+      FirebaseFirestore.instance
+          .collection('users')
+          .doc(user?.uid)
+          .collection('orders')
+          .doc(orderRef.id)
+          .set(orderData),
+      FirebaseFirestore.instance
+          .collection('users')
+          .doc(item['sellerUserId'])
+          .collection('sales')
+          .doc(orderRef.id)
+          .set(orderData),
+    ]);
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user?.uid)
+        .collection('cart')
+        .doc(item['docId'])
+        .delete();
+  }
+
+  await Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(
+      builder: (context) => OrderSuccessPage(
+        isMeetup: selectedDealMethod == 'meetup',
+        totalAmount: finalTotal,
+        cartItems: widget.cartItems.map((item) {
+          return {
+            ...item,
             'address': selectedDealMethod == 'delivery'
                 ? addressController.text
                 : 'Meetup Address',
-            'buyerId': user?.uid,
-            'buyerName': buyerData['username'] ?? 'Unknown Buyer',
-            'buyerEmail': buyerData['email'] ?? 'No Email',
-            'sellerUserId': item['sellerUserId'],
-            'sellerName': item['sellerName'],
-            'sellerEmail': item['sellerEmail'],
-            'timestamp': FieldValue.serverTimestamp(),
           };
+        }).toList(),
+      ),
+    ),
+  );
+}
 
-          await Future.wait([
-            // Save to buyer's orders subcollection
-            FirebaseFirestore.instance
-                .collection('users')
-                .doc(user?.uid)
-                .collection('orders')
-                .doc(orderRef.id)
-                .set(orderData),
-
-            // Save to seller's sales subcollection
-            FirebaseFirestore.instance
-                .collection('users')
-                .doc(item['sellerUserId'])
-                .collection('sales')
-                .doc(orderRef.id)
-                .set(orderData),
-          ]);
-
-          // Clear item from cart
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user?.uid)
-              .collection('cart')
-              .doc(item['docId'])
-              .delete();
-        }
-
-        // Navigate to success page
-        await Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => OrderSuccessPage(
-              isMeetup: selectedDealMethod == 'meetup',
-              totalAmount: finalTotal,
-              cartItems: widget.cartItems.map((item) {
-                return {
-                  ...item,
-                  'address': selectedDealMethod == 'delivery'
-                      ? addressController.text
-                      : 'Meetup Address',
-                };
-              }).toList(),
-            ),
-          ),
-        );
-      }
-    } else {
-      // Handle other payment methods
-      await Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => OrderSuccessPage(
-            isMeetup: selectedDealMethod == 'meetup',
-            totalAmount: finalTotal,
-            cartItems: widget.cartItems.map((item) {
-              return {
-                ...item,
-                'address': selectedDealMethod == 'delivery'
-                    ? addressController.text
-                    : 'Meetup Address',
-              };
-            }).toList(),
-          ),
-        ),
-      );
-    }
-  }
 
   String formatCardNumber(String number) {
     if (number.length >= 4) {

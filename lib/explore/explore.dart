@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:unithrift/explore/service/campus_service.dart';
 import 'package:unithrift/explore/feature/feature.dart';
 import 'package:unithrift/explore/rental/popular_rental.dart';
@@ -11,16 +13,55 @@ class Explore extends StatefulWidget {
 }
 
 class _ExploreState extends State<Explore> {
+  late Future<String> usernameFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    usernameFuture = fetchUsername();
+  }
+
+  Future<String> fetchUsername() async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      
+      if (userDoc.exists) {
+        return userDoc.get('username') ?? '';
+      }
+    }
+    return '';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: Padding(
-        padding: const EdgeInsets.symmetric(
-            horizontal: 24.0, vertical: 30.0), // Increased padding
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 30.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            FutureBuilder<String>(
+              future: usernameFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SizedBox.shrink(); // Or a loading indicator
+                }
+                return Text(
+                  'Welcome, ${snapshot.data}!',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black54,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 8),
             const Text(
               'What are you looking for today?',
               style: TextStyle(
