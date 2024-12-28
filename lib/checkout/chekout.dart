@@ -132,69 +132,8 @@ Future<void> _handlePayment() async {
 }
 
 
-
-// Add this helper method to process the order
+// In CheckoutPage, modify _processOrder to just handle navigation
 Future<void> _processOrder() async {
-  final user = FirebaseAuth.instance.currentUser;
-
-  for (var item in widget.cartItems) {
-    final orderRef = FirebaseFirestore.instance.collection('orders').doc();
-    final buyerDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user?.uid)
-        .get();
-    final buyerData = buyerDoc.data() ?? {};
-
-    final orderData = {
-      'orderId': 'ORD${DateTime.now().millisecondsSinceEpoch}',
-      'trackingNo': 'TRK${DateTime.now().millisecondsSinceEpoch}',
-      'productID': item['productID'],
-      'name': item['name'],
-      'price': item['price'],
-      'quantity': item['quantity'] ?? 1,
-      'totalAmount': item['price'] * (item['quantity'] ?? 1),
-      'imageUrl1': item['imageUrl1'],
-      'condition': item['condition'],
-      'type': item['type'] ?? 'item',
-      'serviceDate': item['serviceDate'] ?? '',
-      'orderDate': FieldValue.serverTimestamp(),
-      'status': 'Pending',
-      'isMeetup': selectedDealMethod == 'meetup',
-      'address': selectedDealMethod == 'delivery'
-          ? addressController.text
-          : 'Meetup Address',
-      'buyerId': user?.uid,
-      'buyerName': buyerData['username'] ?? 'Unknown Buyer',
-      'buyerEmail': buyerData['email'] ?? 'No Email',
-      'sellerUserId': item['sellerUserId'],
-      'sellerName': item['sellerName'],
-      'sellerEmail': item['sellerEmail'],
-      'timestamp': FieldValue.serverTimestamp(),
-    };
-
-    await Future.wait([
-      FirebaseFirestore.instance
-          .collection('users')
-          .doc(user?.uid)
-          .collection('orders')
-          .doc(orderRef.id)
-          .set(orderData),
-      FirebaseFirestore.instance
-          .collection('users')
-          .doc(item['sellerUserId'])
-          .collection('sales')
-          .doc(orderRef.id)
-          .set(orderData),
-    ]);
-
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user?.uid)
-        .collection('cart')
-        .doc(item['docId'])
-        .delete();
-  }
-
   await Navigator.pushReplacement(
     context,
     MaterialPageRoute(
@@ -213,6 +152,7 @@ Future<void> _processOrder() async {
     ),
   );
 }
+
 
 
   String formatCardNumber(String number) {
