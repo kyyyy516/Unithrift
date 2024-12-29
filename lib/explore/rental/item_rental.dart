@@ -10,6 +10,7 @@ import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'dart:math' show min; // Add this import at the top
 import 'package:unithrift/firestore_service.dart';
+import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 
 class ItemRentalPage extends StatefulWidget {
   final Map<String, dynamic> product;
@@ -31,6 +32,9 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
   double globalAveragereview = 0.0;
   List<dynamic> globalreviews = [];
   final FavoriteService _favoriteService = FavoriteService();
+  List<DateTime> _bookedDates = [];
+  final DateRangePickerController _datePickerController =
+      DateRangePickerController();
 
   DateTime? _startDate;
   DateTime? _endDate;
@@ -44,6 +48,51 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
     fetchGlobalSellerreviews();
     fetchSellerProfile();
     _incrementProductViews(); // zx
+    _fetchBookedDates();
+  }
+
+// Add this method to fetch booked dates
+  Future<void> _fetchBookedDates() async {
+    try {
+      final ordersSnapshot = await FirebaseFirestore.instance
+          .collectionGroup('orders')
+          .where('productID', isEqualTo: widget.product['productID'])
+          .where('status', whereIn: ['pending', 'confirmed']).get();
+
+      Set<DateTime> bookedDatesSet = {};
+
+      for (var doc in ordersSnapshot.docs) {
+        String? startDateStr = doc.data()['startRentalDate'];
+        String? endDateStr = doc.data()['endRentalDate'];
+
+        if (startDateStr != null && endDateStr != null) {
+          DateTime startDate = _parseDate(startDateStr);
+          DateTime endDate = _parseDate(endDateStr);
+
+          // Add all dates between start and end dates
+          for (var date = startDate;
+              date.isBefore(endDate.add(const Duration(days: 1)));
+              date = date.add(const Duration(days: 1))) {
+            bookedDatesSet.add(DateTime(date.year, date.month, date.day));
+          }
+        }
+      }
+
+      setState(() {
+        _bookedDates = bookedDatesSet.toList();
+      });
+    } catch (e) {
+      print('Error fetching booked dates: $e');
+    }
+  }
+
+  DateTime _parseDate(String dateStr) {
+    List<String> parts = dateStr.split('/');
+    return DateTime(
+      int.parse(parts[2]), // year
+      int.parse(parts[1]), // month
+      int.parse(parts[0]), // day
+    );
   }
 
   // zx
@@ -567,6 +616,7 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                     ),
                     const SizedBox(height: 10),
                     // Date Selection Container with green outline
+                    // Modify your date selection container onTap
                     Container(
                       decoration: BoxDecoration(
                         border: Border.all(
@@ -577,37 +627,70 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                         color: Colors.transparent,
                         child: InkWell(
                           borderRadius: BorderRadius.circular(8),
-                          onTap: () async {
-                            DateTimeRange? picked = await showDateRangePicker(
+                          onTap: () {
+                            showDialog(
                               context: context,
-                              firstDate: DateTime.now(),
-                              lastDate: DateTime(2025),
-                              initialDateRange:
-                                  _startDate != null && _endDate != null
-                                      ? DateTimeRange(
-                                          start: _startDate!, end: _endDate!)
-                                      : null,
-                              builder: (context, child) {
-                                return Theme(
-                                  data: ThemeData.light().copyWith(
-                                    colorScheme: const ColorScheme.light(
-                                      primary: Color(0xFF424632),
-                                      onPrimary: Colors.white,
-                                      surface: Color(0xFFF2F3EC),
-                                      onSurface: Colors.black,
+                              builder: (BuildContext context) {
+                                return Dialog(
+                                  child: Container(
+                                    height: 400,
+                                    padding: const EdgeInsets.all(20),
+                                    child: Column(
+                                      children: [
+                                        const Text(
+                                          'Select Rental Period',
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 20),
+                                        Expanded(
+                                          child: SfDateRangePicker(
+                                            controller: _datePickerController,
+                                            view: DateRangePickerView.month,
+                                            selectionMode:
+                                                DateRangePickerSelectionMode
+                                                    .range,
+                                            minDate: DateTime.now(),
+                                            maxDate: DateTime.now()
+                                                .add(const Duration(days: 365)),
+                                            monthViewSettings:
+                                                DateRangePickerMonthViewSettings(
+                                              blackoutDates: _bookedDates,
+                                            ),
+                                            onSelectionChanged:
+                                                (DateRangePickerSelectionChangedArgs
+                                                    args) {
+                                              if (args.value
+                                                  is PickerDateRange) {
+                                                setState(() {
+                                                  _startDate =
+                                                      args.value.startDate;
+                                                  _endDate = args.value.endDate;
+                                                });
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () {
+                                            Navigator.pop(context);
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor:
+                                                const Color(0xFF808569),
+                                          ),
+                                          child: const Text('Confirm',
+                                              style: TextStyle(
+                                                  color: Colors.white)),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  child: child!,
                                 );
                               },
                             );
-
-                            if (picked != null) {
-                              setState(() {
-                                _startDate = picked.start;
-                                _endDate = picked.end;
-                              });
-                            }
                           },
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
@@ -808,37 +891,70 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                         color: Colors.transparent,
                         child: InkWell(
                           borderRadius: BorderRadius.circular(8),
-                          onTap: () async {
-                            DateTimeRange? picked = await showDateRangePicker(
+                          onTap: () {
+                            showDialog(
                               context: context,
-                              firstDate: DateTime.now(),
-                              lastDate: DateTime(2025),
-                              initialDateRange:
-                                  _startDate != null && _endDate != null
-                                      ? DateTimeRange(
-                                          start: _startDate!, end: _endDate!)
-                                      : null,
-                              builder: (context, child) {
-                                return Theme(
-                                  data: ThemeData.light().copyWith(
-                                    colorScheme: const ColorScheme.light(
-                                      primary: Color(0xFF424632),
-                                      onPrimary: Colors.white,
-                                      surface: Color(0xFFF2F3EC),
-                                      onSurface: Colors.black,
+                              builder: (BuildContext context) {
+                                return Dialog(
+                                  child: Container(
+                                    height: 400,
+                                    padding: const EdgeInsets.all(20),
+                                    child: Column(
+                                      children: [
+                                        const Text(
+                                          'Select Rental Period',
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 20),
+                                        Expanded(
+                                          child: SfDateRangePicker(
+                                            controller: _datePickerController,
+                                            view: DateRangePickerView.month,
+                                            selectionMode:
+                                                DateRangePickerSelectionMode
+                                                    .range,
+                                            minDate: DateTime.now(),
+                                            maxDate: DateTime.now()
+                                                .add(const Duration(days: 365)),
+                                            monthViewSettings:
+                                                DateRangePickerMonthViewSettings(
+                                              blackoutDates: _bookedDates,
+                                            ),
+                                            onSelectionChanged:
+                                                (DateRangePickerSelectionChangedArgs
+                                                    args) {
+                                              if (args.value
+                                                  is PickerDateRange) {
+                                                setState(() {
+                                                  _startDate =
+                                                      args.value.startDate;
+                                                  _endDate = args.value.endDate;
+                                                });
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () {
+                                            Navigator.pop(context);
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor:
+                                                const Color(0xFF808569),
+                                          ),
+                                          child: const Text('Confirm',
+                                              style: TextStyle(
+                                                  color: Colors.white)),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  child: child!,
                                 );
                               },
                             );
-
-                            if (picked != null) {
-                              setState(() {
-                                _startDate = picked.start;
-                                _endDate = picked.end;
-                              });
-                            }
                           },
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
@@ -1948,3 +2064,6 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
     );
   }
 }
+
+
+

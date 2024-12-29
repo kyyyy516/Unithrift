@@ -1,12 +1,16 @@
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:unithrift/checkout/cimb/cimblogin.dart';
 import 'package:unithrift/checkout/cimb/cimbredirect.dart';
+import 'package:unithrift/checkout/cimb/cimbtransaction.dart';
 import 'package:unithrift/checkout/hongleong/hongleonglogin.dart';
 import 'package:unithrift/checkout/hongleong/hongleongredirect.dart';
+import 'package:unithrift/checkout/hongleong/hongleongtransaction.dart';
 import 'package:unithrift/checkout/maybank/maybanklogin.dart';
 import 'package:unithrift/checkout/maybank/maybankredirect.dart';
+import 'package:unithrift/checkout/maybank/maybanktransaction.dart';
 import 'package:unithrift/checkout/ordersuccess.dart';
 import 'package:unithrift/checkout/payment.dart';
 
@@ -58,8 +62,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
   }
 
-  // Update the _handlePayment method
-Future<void> _handlePayment() async {
+  Future<void> _handlePayment() async {
   if (selectedDealMethod == 'delivery' && addressController.text.trim().isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Please enter a delivery address')),
@@ -67,7 +70,8 @@ Future<void> _handlePayment() async {
     return;
   }
 
-  // Handle FPX payments
+  final user = FirebaseAuth.instance.currentUser;
+
   if (selectedPaymentMethod == 'fpx') {
     if (selectedBank?['name'] == 'CIMB') {
       await Navigator.push(
@@ -77,15 +81,27 @@ Future<void> _handlePayment() async {
         ),
       );
 
-      final result = await Navigator.pushReplacement(
+      final loginResult = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => CIMBLoginPage(amount: finalTotal),
         ),
       );
 
-      if (result == true) {
-        await _processOrder();
+      if (loginResult == true) {
+        final transactionResult = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CIMBTransactionPage(
+              amount: finalTotal,
+              userEmail: user?.email ?? '',
+            ),
+          ),
+        );
+
+        if (transactionResult == true) {
+          await _processOrder();
+        }
       }
     } else if (selectedBank?['name'] == 'Maybank') {
       await Navigator.push(
@@ -95,15 +111,27 @@ Future<void> _handlePayment() async {
         ),
       );
 
-      final result = await Navigator.pushReplacement(
+      final loginResult = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => maybankLoginPage(amount: finalTotal),
         ),
       );
 
-      if (result == true) {
-        await _processOrder();
+      if (loginResult == true) {
+        final transactionResult = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => maybankTransactionPage(
+              amount: finalTotal,
+              userEmail: user?.email ?? '',
+            ),
+          ),
+        );
+
+        if (transactionResult == true) {
+          await _processOrder();
+        }
       }
     } else if (selectedBank?['name'] == 'HongLeong') {
       await Navigator.push(
@@ -113,23 +141,34 @@ Future<void> _handlePayment() async {
         ),
       );
 
-      final result = await Navigator.pushReplacement(
+      final loginResult = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => hongleongLoginPage(amount: finalTotal),
         ),
       );
 
-      if (result == true) {
-        await _processOrder();
+      if (loginResult == true) {
+        final transactionResult = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => hongleongTransactionPage(
+              amount: finalTotal,
+              userEmail: user?.email ?? '',
+            ),
+          ),
+        );
+
+        if (transactionResult == true) {
+          await _processOrder();
+        }
       }
     }
-  } 
-  // Handle credit card and TNG payments
-  else if (selectedPaymentMethod == 'credit_card' || selectedPaymentMethod == 'tng') {
+  } else if (selectedPaymentMethod == 'credit_card' || selectedPaymentMethod == 'tng') {
     await _processOrder();
   }
 }
+
 
 
 // In CheckoutPage, modify _processOrder to just handle navigation
@@ -152,7 +191,6 @@ Future<void> _processOrder() async {
     ),
   );
 }
-
 
 
   String formatCardNumber(String number) {
@@ -509,3 +547,8 @@ Future<void> _processOrder() async {
     return const SizedBox.shrink();
   }
 }
+
+
+
+
+

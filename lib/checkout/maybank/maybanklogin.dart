@@ -24,11 +24,13 @@ class _maybankLoginPageState extends State<maybankLoginPage> {
         password: _passwordController.text,
       );
 
-      // Get the current user's email
       String? userEmail = userCredential.user?.email;
 
       if (userEmail != null) {
-        // Navigate to transaction page with email
+        // First pop with success result
+        Navigator.pop(context, true);
+
+        // Then navigate to transaction page
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -100,6 +102,15 @@ class _maybankLoginPageState extends State<maybankLoginPage> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    SizedBox(height: 3),
+                    Text(
+                      '(Use your registered email and password)',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                     SizedBox(height: 20),
                     TextField(
                       controller: _emailController,
@@ -123,7 +134,8 @@ class _maybankLoginPageState extends State<maybankLoginPage> {
                       child: Text(
                         'Login',
                         style: TextStyle(
-                            color: Colors.black,), // Added black text color
+                          color: Colors.black,
+                        ), // Added black text color
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Color.fromARGB(255, 252, 204, 4),

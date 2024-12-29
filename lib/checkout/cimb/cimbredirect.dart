@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:unithrift/checkout/cimb/cimblogin.dart';
 
 class CIMBRedirectPage extends StatefulWidget {
   final double amount;
@@ -19,12 +18,7 @@ class _CIMBRedirectPageState extends State<CIMBRedirectPage> {
 
   void _redirectAfterDelay() {
     Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => CIMBLoginPage(amount: widget.amount),
-        ),
-      );
+      Navigator.pop(context); // Simply pop back to trigger the next navigation
     });
   }
 

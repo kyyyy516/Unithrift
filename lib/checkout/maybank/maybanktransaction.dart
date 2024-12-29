@@ -20,6 +20,8 @@ class maybankTransactionPage extends StatefulWidget {
 
 class _maybankTransactionPageState extends State<maybankTransactionPage> {
   final TextEditingController _otpController = TextEditingController();
+  bool _isLoading = false;
+
 
   @override
   void initState() {
@@ -37,7 +39,7 @@ class _maybankTransactionPageState extends State<maybankTransactionPage> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          backgroundColor: Color.fromARGB(255, 252,204,4), 
+          backgroundColor: Color.fromARGB(255, 252, 204, 4),
           title: Image.asset(
             'assets/maybank2.png',
             height: 100,
@@ -112,20 +114,29 @@ class _maybankTransactionPageState extends State<maybankTransactionPage> {
 
                 // Confirm Transaction Button
                 // Update the confirm button
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 40),
-                  child: ElevatedButton(
-                    onPressed: () => _showOTPDialog(context),
-                    child: Text('Confirm',style: TextStyle(color: Colors.black)), // Added black text color,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color.fromARGB(255, 252,204,4),
-                      minimumSize: Size(200, 45),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
+               Padding(
+  padding: EdgeInsets.symmetric(horizontal: 40),
+  child: ElevatedButton(
+    onPressed: _isLoading ? null : () => _showOTPDialog(context),
+    child: _isLoading
+        ? SizedBox(
+            height: 20,
+            width: 20,
+            child: CircularProgressIndicator(
+              color: Colors.black,
+              strokeWidth: 2,
+            ),
+          )
+        : Text('Confirm', style: TextStyle(color: Colors.black)),
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Color.fromARGB(255, 252, 204, 4),
+      minimumSize: Size(200, 45),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+      ),
+    ),
+  ),
+),
               ],
             ),
           ),
@@ -161,6 +172,10 @@ class _maybankTransactionPageState extends State<maybankTransactionPage> {
   }
 
   void _showOTPDialog(BuildContext context) async {
+    setState(() {
+    _isLoading = true;
+  });
+
     try {
       // Use the user's email from widget
       await EmailOTP.sendOTP(email: widget.userEmail);
@@ -215,32 +230,11 @@ class _maybankTransactionPageState extends State<maybankTransactionPage> {
                         // Simulate transaction processing
                         await Future.delayed(const Duration(seconds: 2));
 
-                        // Get current user and cart items
-                        final user = FirebaseAuth.instance.currentUser;
-                        final cartSnapshot = await FirebaseFirestore.instance
-                            .collection('users')
-                            .doc(user?.uid)
-                            .collection('cart')
-                            .get();
-
-                        // Map cart items
-                        final cartItems = cartSnapshot.docs.map((doc) {
-                          var data = doc.data();
-                          data['docId'] = doc.id;
-                          return data;
-                        }).toList();
-
-                        // Navigate to success page
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => OrderSuccessPage(
-                              isMeetup: false,
-                              totalAmount: widget.amount,
-                              cartItems: cartItems,
-                            ),
-                          ),
-                        );
+                        // Return true to indicate successful transaction
+                        Navigator.of(context).pop(); // Remove loading dialog
+                        Navigator.of(context).pop(); // Remove OTP dialog
+                        Navigator.of(context)
+                            .pop(true); // Return true to previous page
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Invalid OTP')),

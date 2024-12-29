@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:unithrift/checkout/hongleong/hongleonglogin.dart';
 
 class hongleongRedirectPage extends StatefulWidget {
   final double amount;
@@ -19,12 +18,7 @@ class _hongleongRedirectPageState extends State<hongleongRedirectPage> {
 
   void _redirectAfterDelay() {
     Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => hongleongLoginPage(amount: widget.amount),
-        ),
-      );
+      Navigator.pop(context); // Simply pop back to trigger the next navigation
     });
   }
 

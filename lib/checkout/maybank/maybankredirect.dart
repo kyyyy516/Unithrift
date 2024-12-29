@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:unithrift/checkout/maybank/maybanklogin.dart';
-
 class maybankRedirectPage extends StatefulWidget {
   final double amount;
 
@@ -19,12 +17,7 @@ class _maybankRedirectPageState extends State<maybankRedirectPage> {
 
   void _redirectAfterDelay() {
     Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => maybankLoginPage(amount: widget.amount),
-        ),
-      );
+      Navigator.pop(context); // Simply pop back to trigger the next navigation
     });
   }
 

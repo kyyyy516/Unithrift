@@ -15,11 +15,13 @@ class hongleongTransactionPage extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<hongleongTransactionPage> createState() => _hongleongTransactionPageState();
+  State<hongleongTransactionPage> createState() =>
+      _hongleongTransactionPageState();
 }
 
 class _hongleongTransactionPageState extends State<hongleongTransactionPage> {
   final TextEditingController _otpController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -37,7 +39,7 @@ class _hongleongTransactionPageState extends State<hongleongTransactionPage> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          backgroundColor: Color.fromARGB(255, 255, 255, 255), 
+          backgroundColor: Color.fromARGB(255, 255, 255, 255),
           title: Image.asset(
             'assets/hongleong2.png',
             height: 100,
@@ -45,7 +47,8 @@ class _hongleongTransactionPageState extends State<hongleongTransactionPage> {
           ),
           centerTitle: true,
           leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: const Color.fromARGB(255, 0, 0, 0)),
+            icon: Icon(Icons.arrow_back,
+                color: const Color.fromARGB(255, 0, 0, 0)),
             onPressed: () => Navigator.pop(context),
           ),
         ),
@@ -110,13 +113,24 @@ class _hongleongTransactionPageState extends State<hongleongTransactionPage> {
                   ),
                 ),
 
-                // Confirm Transaction Button
-                // Update the confirm button
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 40),
                   child: ElevatedButton(
-                    onPressed: () => _showOTPDialog(context),
-                    child: Text('Confirm'),
+                    onPressed:
+                        _isLoading ? null : () => _showOTPDialog(context),
+                    child: _isLoading
+                        ? SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.black,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text('Confirm',
+                            style: TextStyle(
+                                color:
+                                    const Color.fromARGB(255, 255, 255, 255))),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color.fromARGB(255, 26, 33, 91),
                       minimumSize: Size(200, 45),
@@ -161,6 +175,9 @@ class _hongleongTransactionPageState extends State<hongleongTransactionPage> {
   }
 
   void _showOTPDialog(BuildContext context) async {
+    setState(() {
+      _isLoading = true;
+    });
     try {
       // Use the user's email from widget
       await EmailOTP.sendOTP(email: widget.userEmail);
@@ -215,32 +232,11 @@ class _hongleongTransactionPageState extends State<hongleongTransactionPage> {
                         // Simulate transaction processing
                         await Future.delayed(const Duration(seconds: 2));
 
-                        // Get current user and cart items
-                        final user = FirebaseAuth.instance.currentUser;
-                        final cartSnapshot = await FirebaseFirestore.instance
-                            .collection('users')
-                            .doc(user?.uid)
-                            .collection('cart')
-                            .get();
-
-                        // Map cart items
-                        final cartItems = cartSnapshot.docs.map((doc) {
-                          var data = doc.data();
-                          data['docId'] = doc.id;
-                          return data;
-                        }).toList();
-
-                        // Navigate to success page
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => OrderSuccessPage(
-                              isMeetup: false,
-                              totalAmount: widget.amount,
-                              cartItems: cartItems,
-                            ),
-                          ),
-                        );
+                        // Return true to indicate successful transaction
+                        Navigator.of(context).pop(); // Remove loading dialog
+                        Navigator.of(context).pop(); // Remove OTP dialog
+                        Navigator.of(context)
+                            .pop(true); // Return true to previous page
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Invalid OTP')),
