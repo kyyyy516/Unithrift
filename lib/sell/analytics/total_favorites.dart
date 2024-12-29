@@ -245,37 +245,30 @@ String? getFirstValidImage(Map<String, dynamic> product) {//yy
   }
 
   Widget _buildGridItem(Map<String, dynamic> item) {
-    // Add this debug print
-    // print('Item description: ${item['details']}');   
-    // print('Item data: $item');
-
-
-     // Helper function to build price text
   Widget buildPriceText() {
-    if (_selectedTabIndex == 1) { // Rental tab
+    if (_selectedTabIndex == 1) {
       return RichText(
-  text: TextSpan(
-    children: [
-      TextSpan(
-        text: 'RM ${(double.parse(item['price'].toString())).toStringAsFixed(2)}',
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
-          color: Colors.black,
+        text: TextSpan(
+          children: [
+            TextSpan(
+              text: 'RM ${(double.parse(item['price'].toString())).toStringAsFixed(2)}',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Colors.black,
+              ),
+            ),
+            TextSpan(
+              text: ' /day',
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+            ),
+          ],
         ),
-      ),
-      TextSpan(
-        text: ' /day',
-        style: const TextStyle(
-          fontSize: 12,
-          color: Colors.grey,
-        ),
-      ),
-    ],
-  ),
-);
-
-    } else { // Other tabs (Items and Services)
+      );
+    } else {
       return Text(
         'RM ${(double.parse(item['price'].toString())).toStringAsFixed(2)}',
         style: const TextStyle(
@@ -286,110 +279,99 @@ String? getFirstValidImage(Map<String, dynamic> product) {//yy
     }
   }
 
-
-    return Card(
-      elevation: 2,
-      color: const Color(0xFFF2F3EC),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),  
-      ),
-      child: Stack(  
-        children: [
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ListingPage(product: item),  // Show details when click 
-                ),
-              );
-            }, 
-
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Image container with fixed height
-            SizedBox(//yy
-  height: 130,
-  width: double.infinity,
-  child: ClipRRect(
-    borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-    child: Image.network(
-      getFirstValidImage(item) ?? 'https://via.placeholder.com/200',
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) {
-        return const Center(
-          child: Icon(Icons.image_not_supported, size: 40),
+  return Card(
+    elevation: 2,
+    color: const Color(0xFFF2F3EC),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(15),
+    ),
+    child: GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ListingPage(product: item),
+          ),
         );
       },
-    ),
-  ),
-),
-                
-                // Content container
-                Expanded(
-                    child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Product Name
-                          Text(
-                            item['name'] ?? 'Unknown Item',
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          
-                          // Description 
-                          if (item['details'] != null && item['details'].toString().isNotEmpty)
-                            Text(
-                              item['details'],
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.grey,
-                                fontSize: 12,
-                              ),
-                            ),
-                          const Spacer(),
-
-                          // Price Button
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              buildPriceText(),
-                        
-                            ],
-                          ),
-                          // Add this to show favorites count
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Row(
-            children: [
-              const Icon(Icons.favorite, size: 16, color: Colors.red),
-              const SizedBox(width: 4),
-              Text(
-                '${item['favorites'] ?? 0} favorites',
-                style: const TextStyle(fontSize: 12),
+      child: Column(
+        children: [
+          // Image container
+          SizedBox(
+            height: 130,
+            width: double.infinity,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+              child: Image.network(
+                getFirstValidImage(item) ?? 'https://via.placeholder.com/200',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Center(
+                    child: Icon(Icons.image_not_supported, size: 40),
+                  );
+                },
               ),
-            ],
+            ),
           ),
-        ),
-                        ],
+          
+          // Content container
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Product Name
+                  Flexible(
+                    child: Text(
+                      item['name'] ?? 'Unknown Item',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
                       ),
+                    ),
                   ),
+                  
+                  // Description
+                  if (item['details'] != null && item['details'].toString().isNotEmpty)
+                    Flexible(
+                      child: Text(
+                        item['details'],
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                  
+                  // Price
+                  buildPriceText(),
+                  const SizedBox(height: 4),
+                  
+                  // Favorites count
+                  Row(
+                    children: [
+                      const Icon(Icons.favorite, size: 14, color: Colors.red),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${item['favorites'] ?? 0} favorites',
+                        style: const TextStyle(fontSize: 10),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
+
 }
