@@ -23,6 +23,17 @@ class UploadServicePage extends StatefulWidget {
   State<UploadServicePage> createState() => _UploadServicePageState();
 }
 
+
+  final List<String> _categories = [//yy
+   
+    'Printing Services',
+    'Laundry Services',
+    'Tutoring Services',
+    'Delivery Services',
+    'Transportation Services',
+    'Others'
+  ];
+  
 class _UploadServicePageState extends State<UploadServicePage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
@@ -30,6 +41,7 @@ class _UploadServicePageState extends State<UploadServicePage> {
   final TextEditingController _priceDetailsController = TextEditingController();
   final TextEditingController _detailsController = TextEditingController();
   final TextEditingController _availabilityController = TextEditingController();
+  String? _selectedCategory;//yy
 
   // Support up to 5 medias
   List<File> _mediaFiles = [];
@@ -48,6 +60,10 @@ class _UploadServicePageState extends State<UploadServicePage> {
       _priceDetailsController.text = widget.prefillData!['pricingDetails'] ?? '';
       _detailsController.text = widget.prefillData!['details'] ?? '';
       _availabilityController.text = widget.prefillData!['availability'] ?? '';
+ 
+ setState(() {//yy
+        _selectedCategory = widget.prefillData!['category'];
+      });
 
       // Create a List<String> for media URLs
       List<String> mediaUrls = [];
@@ -110,6 +126,12 @@ class _UploadServicePageState extends State<UploadServicePage> {
     if (_mediaFiles.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select at least one image')),
+      );
+      return false;
+    }
+     if (_selectedCategory == null) {//yy
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a category')),
       );
       return false;
     }
@@ -331,6 +353,7 @@ class _UploadServicePageState extends State<UploadServicePage> {
             .trim(), // removes any leading and trailing whitespace from a string.
         'price': double.parse(
             double.parse(_priceController.text.trim()).toStringAsFixed(2)),
+        'category': _selectedCategory,//yy
         'pricingDetails': _priceDetailsController.text.trim(),
         'details': _detailsController.text.trim(),
         'availability': _availabilityController.text.trim(),
@@ -391,6 +414,8 @@ class _UploadServicePageState extends State<UploadServicePage> {
           _mediaFiles.clear();
           _mediaUrls.clear();
           _isUploading = false;
+          _selectedCategory = null;//yy
+
         });
       }
     } catch (e, stackTrace) {
@@ -609,6 +634,33 @@ class _UploadServicePageState extends State<UploadServicePage> {
                         ),
                       ),
                     const SizedBox(height: 30),
+                      DropdownButtonFormField<String>(//yy
+                      decoration: const InputDecoration(
+                        labelText: 'Category',
+                        border: OutlineInputBorder(),
+                      ),
+                      value: _selectedCategory,
+                      hint: const Text('Select a Category'),
+                      items: _categories.map((String category) {
+                        return DropdownMenuItem<String>(
+                          value: category,
+                          child: Text(category),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _selectedCategory = newValue;
+                        });
+                      },
+                      validator: (value) {
+                        if (value == null) {
+                          return 'Please select a category';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 30),
+
                     TextFormField(
                       controller: _nameController,
                       decoration: const InputDecoration(

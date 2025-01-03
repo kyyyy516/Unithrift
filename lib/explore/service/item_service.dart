@@ -2,10 +2,12 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart' hide CarouselController;
+import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 import 'package:unithrift/account/favourite_service.dart';
 import 'package:unithrift/account/view_user_profile.dart';
 import 'package:unithrift/chatscreen.dart';
 import 'package:unithrift/checkout/chekout.dart';
+import 'package:unithrift/explore/rental/item_rental.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'dart:math' show min; // Add this import at the top
@@ -31,6 +33,8 @@ class _ItemServicePageState extends State<ItemServicePage> {
   double globalAveragereview = 0.0;
   List<dynamic> globalreviews = [];
   final FavoriteService _favoriteService = FavoriteService();
+   final DateRangePickerController _datePickerController = DateRangePickerController();
+  List<DateTime> _bookedDates = [];
 
   DateTime? selectedDate;
   int quantity = 1;
@@ -44,7 +48,50 @@ class _ItemServicePageState extends State<ItemServicePage> {
     fetchGlobalSellerreviews();
     fetchSellerProfile();
   _incrementProductViews(); // zx
+      _fetchBookedDates();
+
   }
+
+
+  
+  
+Future<void> _fetchBookedDates() async {
+    try {
+      final ordersSnapshot = await FirebaseFirestore.instance
+          .collectionGroup('orders')
+          .where('status', isEqualTo: 'Pending')
+          .get();
+
+      Set<DateTime> bookedDatesSet = {};
+
+      for (var doc in ordersSnapshot.docs) {
+        if (doc.data()['productId'] == widget.product['productId']) {
+          String? serviceDateStr = doc.data()['serviceDate'];
+          if (serviceDateStr != null) {
+            DateTime serviceDate = _parseDate(serviceDateStr);
+            bookedDatesSet.add(serviceDate);
+          }
+        }
+      }
+
+      setState(() {
+        _bookedDates = bookedDatesSet.toList();
+      });
+    } catch (e) {
+      print('Error fetching booked dates: $e');
+    }
+  }
+
+  DateTime _parseDate(String dateStr) {
+    List<String> parts = dateStr.split('/');
+    return DateTime(
+      int.parse(parts[2]), // year
+      int.parse(parts[1]), // month
+      int.parse(parts[0]), // day
+    );
+  }
+
+
 
   // zx
   Future<void> _incrementProductViews() async {
@@ -295,7 +342,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                 (double.tryParse(widget.product['price']?.toString() ?? '0') ??
                     0.0);
 
-            return Padding(
+           return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
@@ -304,6 +351,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Same UI as _showServiceBottomSheet
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -312,7 +360,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                           onPressed: () => Navigator.pop(context),
                         ),
                         const Text(
-                          'Service Details',
+                          'Select Service Details',
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -348,78 +396,110 @@ class _ItemServicePageState extends State<ItemServicePage> {
                         ],
                       ),
                     ),
-
-                    // Date Selection
+                      
+                    
+                    const SizedBox(height: 20),
                     Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                            color: const Color(0xFF808569), width: 1.5),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(8),
-                          onTap: () async {
-                            final DateTime? picked = await showDatePicker(
-                              context: context,
-                              initialDate: DateTime.now(),
-                              firstDate: DateTime.now(),
-                              lastDate: DateTime(2025),
-                              builder: (context, child) {
-                                return Theme(
-                                  data: ThemeData.light().copyWith(
-                                    colorScheme: const ColorScheme.light(
-                                      primary: Color(0xFF424632),
-                                      onPrimary: Colors.white,
-                                      surface: Color(0xFFF2F3EC),
-                                      onSurface: Colors.black,
-                                    ),
-                                  ),
-                                  child: child!,
-                                );
-                              },
-                            );
-                            if (picked != null) {
-                              setState(() {
-                                selectedDate = picked;
-                              });
-                            }
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.calendar_today,
-                                    color: Color(0xFF808569)),
-                                const SizedBox(width: 12),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Service Date',
-                                      style: TextStyle(
-                                        color: Color(0xFF808569),
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    Text(
-                                      selectedDate != null
-                                          ? '${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}'
-                                          : 'Select date',
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+  decoration: BoxDecoration(
+    border: Border.all(color: const Color(0xFF808569), width: 1.5),
+    borderRadius: BorderRadius.circular(8),
+  ),
+  child: Material(
+    color: Colors.transparent,
+    child: InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () {
+        // Add the dialog code here
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return Dialog(
+              child: Container(
+                height: 400,
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    const Text(
+                      'Select Service Date',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
+                    const SizedBox(height: 20),
+                    Expanded(
+                      child: SfDateRangePicker(
+                        controller: _datePickerController,
+                        view: DateRangePickerView.month,
+                        selectionMode: DateRangePickerSelectionMode.single,
+                        minDate: DateTime.now(),
+                        maxDate: DateTime.now().add(const Duration(days: 365)),
+                        monthViewSettings: DateRangePickerMonthViewSettings(
+                          blackoutDates: _bookedDates,
+                        ),
+                        selectionColor: const Color(0xFF808569),
+                        todayHighlightColor: const Color(0xFF808569),
+                        selectionTextStyle: const TextStyle(color: Colors.white),
+                        enablePastDates: false,
+                        showNavigationArrow: true,
+                        onSelectionChanged: (DateRangePickerSelectionChangedArgs args) {
+                          if (args.value is DateTime) {
+                            setState(() {
+                              selectedDate = args.value;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF808569),
+                      ),
+                      child: const Text('Confirm', style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            const Icon(Icons.calendar_today, color: Color(0xFF808569)),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Service Date',
+                  style: TextStyle(
+                    color: Color(0xFF808569),
+                    fontSize: 12,
+                  ),
+                ),
+                Text(
+                  selectedDate != null
+                      ? '${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}'
+                      : 'Select date',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  ),
+),
 
                     const SizedBox(height: 20),
 
@@ -1136,7 +1216,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                           onPressed: () => Navigator.pop(context),
                         ),
                         const Text(
-                          'Service Details',
+                          'Select Service Details',
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -1173,77 +1253,108 @@ class _ItemServicePageState extends State<ItemServicePage> {
                       ),
                     ),
 
-                    // Date Selection
-                    Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                            color: const Color(0xFF808569), width: 1.5),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(8),
-                          onTap: () async {
-                            final DateTime? picked = await showDatePicker(
-                              context: context,
-                              initialDate: DateTime.now(),
-                              firstDate: DateTime.now(),
-                              lastDate: DateTime(2025),
-                              builder: (context, child) {
-                                return Theme(
-                                  data: ThemeData.light().copyWith(
-                                    colorScheme: const ColorScheme.light(
-                                      primary: Color(0xFF424632),
-                                      onPrimary: Colors.white,
-                                      surface: Color(0xFFF2F3EC),
-                                      onSurface: Colors.black,
-                                    ),
-                                  ),
-                                  child: child!,
-                                );
-                              },
-                            );
-                            if (picked != null) {
-                              setState(() {
-                                selectedDate = picked;
-                              });
-                            }
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.calendar_today,
-                                    color: Color(0xFF808569)),
-                                const SizedBox(width: 12),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Service Date',
-                                      style: TextStyle(
-                                        color: Color(0xFF808569),
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    Text(
-                                      selectedDate != null
-                                          ? '${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}'
-                                          : 'Select date',
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                   Container(
+  decoration: BoxDecoration(
+    border: Border.all(color: const Color(0xFF808569), width: 1.5),
+    borderRadius: BorderRadius.circular(8),
+  ),
+  child: Material(
+    color: Colors.transparent,
+    child: InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () {
+        // Add the dialog code here
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return Dialog(
+              child: Container(
+                height: 400,
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    const Text(
+                      'Select Service Date',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
+                    const SizedBox(height: 20),
+                    Expanded(
+                      child: SfDateRangePicker(
+                        controller: _datePickerController,
+                        view: DateRangePickerView.month,
+                        selectionMode: DateRangePickerSelectionMode.single,
+                        minDate: DateTime.now(),
+                        maxDate: DateTime.now().add(const Duration(days: 365)),
+                        monthViewSettings: DateRangePickerMonthViewSettings(
+                          blackoutDates: _bookedDates,
+                        ),
+                        selectionColor: const Color(0xFF808569),
+                        todayHighlightColor: const Color(0xFF808569),
+                        selectionTextStyle: const TextStyle(color: Colors.white),
+                        enablePastDates: false,
+                        showNavigationArrow: true,
+                        onSelectionChanged: (DateRangePickerSelectionChangedArgs args) {
+                          if (args.value is DateTime) {
+                            setState(() {
+                              selectedDate = args.value;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF808569),
+                      ),
+                      child: const Text('Confirm', style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            const Icon(Icons.calendar_today, color: Color(0xFF808569)),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Service Date',
+                  style: TextStyle(
+                    color: Color(0xFF808569),
+                    fontSize: 12,
+                  ),
+                ),
+                Text(
+                  selectedDate != null
+                      ? '${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}'
+                      : 'Select date',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  ),
+)
+,
 
                     const SizedBox(height: 20),
 
@@ -1350,7 +1461,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
   }
 
   // ky line 1317 to line 1476
-  /*String getFirstValidImage(Map<String, dynamic> product) {
+  String getFirstValidImage(Map<String, dynamic> product) {
     List<dynamic> images = [
       product['imageUrl1'],
       product['imageUrl2'],
@@ -1510,7 +1621,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
         ),
       ],
     );
-  }*/
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1654,6 +1765,32 @@ class _ItemServicePageState extends State<ItemServicePage> {
                       ),
                       const SizedBox(height: 25),
                       Column(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    Row(
+      children: [
+        const Text(
+          "Category",
+          style: TextStyle(
+            fontSize: 13,
+            color: Color(0xFF808569),
+          ),
+        ),
+        const SizedBox(width: 4),
+      ],
+    ),
+    Text(
+      "${widget.product['category'] ?? 'N/A'}",
+      style: const TextStyle(
+        fontSize: 14,
+        color: Colors.black,
+      ),
+    ),
+  ],
+),
+const SizedBox(height: 25),
+
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
@@ -1730,7 +1867,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                       ),
                       // review Section
                       const SizedBox(height: 30),
-                      _buildreviewSection(),
+                     _buildreviewSection(),
                       const Divider(
                         height: 20,
                         thickness: 1,
@@ -1740,7 +1877,7 @@ class _ItemServicePageState extends State<ItemServicePage> {
                     ],
                   ),
                 ),
-                //_buildSimilarListings(), //ky
+                _buildSimilarListings(), //ky
                 // Bottom padding for navigation bar
                 const SizedBox(height: 80),
               ],

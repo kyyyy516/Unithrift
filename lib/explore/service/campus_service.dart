@@ -2,6 +2,7 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 import 'package:unithrift/account/favourite_service.dart';
 import 'package:unithrift/explore/service/item_service.dart';
 import 'package:unithrift/navigation%20bar/bottom_navbar.dart';
@@ -20,6 +21,10 @@ class _CampusServiceState extends State<CampusService> {
   int _selectedIndex = 0;
   String nameQuery = '';
   final FavoriteService _favoriteService = FavoriteService();
+  final DateRangePickerController _datePickerController = DateRangePickerController();
+DateTime? _selectedDate;
+List<DateTime> _bookedDates = [];
+
 
   DateTime? _startDate;
   DateTime? _endDate;
@@ -89,6 +94,67 @@ class _CampusServiceState extends State<CampusService> {
       return allProducts;
     });
   }
+
+
+void _showServiceDatePicker() {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return Dialog(
+        child: Container(
+          height: 400,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              const Text(
+                'Select Service Date',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Expanded(
+                child: SfDateRangePicker(
+                  controller: _datePickerController,
+                  view: DateRangePickerView.month,
+                  selectionMode: DateRangePickerSelectionMode.single,
+                  minDate: DateTime.now(),
+                  maxDate: DateTime.now().add(const Duration(days: 365)),
+                  monthViewSettings: DateRangePickerMonthViewSettings(
+                    blackoutDates: _bookedDates,
+                  ),
+                  selectionColor: const Color(0xFF808569),
+                  todayHighlightColor: const Color(0xFF808569),
+                  selectionTextStyle: const TextStyle(color: Colors.white),
+                  enablePastDates: false,
+                  showNavigationArrow: true,
+                  onSelectionChanged: (DateRangePickerSelectionChangedArgs args) {
+                    if (args.value is DateTime) {
+                      setState(() {
+                        _selectedDate = args.value;
+                      });
+                    }
+                  },
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF808569),
+                ),
+                child: const Text('Confirm', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
 
   void _showCategoryBottomSheet() {
     showModalBottomSheet(
@@ -261,59 +327,26 @@ class _CampusServiceState extends State<CampusService> {
                           const SizedBox(height: 16),
 
                           // Date Range Selection
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  readOnly: true,
-                                  onTap: _showDateRangePicker,
-                                  decoration: InputDecoration(
-                                    hintText: 'Start Date',
-                                    hintStyle:
-                                        const TextStyle(color: Colors.grey),
-                                    filled: true,
-                                    fillColor: const Color(0xFFF2F3EC),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                      borderSide: BorderSide.none,
-                                    ),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 15),
-                                  ),
-                                  controller: TextEditingController(
-                                      text: _startDate != null
-                                          ? DateFormat('dd/MM/yyyy')
-                                              .format(_startDate!)
-                                          : ''),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: TextField(
-                                  readOnly: true,
-                                  onTap: _showDateRangePicker,
-                                  decoration: InputDecoration(
-                                    hintText: 'Return Date',
-                                    hintStyle:
-                                        const TextStyle(color: Colors.grey),
-                                    filled: true,
-                                    fillColor: const Color(0xFFF2F3EC),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                      borderSide: BorderSide.none,
-                                    ),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 15),
-                                  ),
-                                  controller: TextEditingController(
-                                      text: _endDate != null
-                                          ? DateFormat('dd/MM/yyyy')
-                                              .format(_endDate!)
-                                          : ''),
-                                ),
-                              ),
-                            ],
-                          ),
+                          TextField(
+  readOnly: true,
+  onTap: _showServiceDatePicker,
+  decoration: InputDecoration(
+    hintText: 'Service Date',
+    suffixIcon: const Icon(Icons.calendar_today),
+    filled: true,
+    fillColor: const Color(0xFFF2F3EC),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: BorderSide.none,
+    ),
+  ),
+  controller: TextEditingController(
+    text: _selectedDate != null 
+      ? DateFormat('dd/MM/yyyy').format(_selectedDate!)
+      : '',
+  ),
+),
+
                           const SizedBox(height: 16),
 
                           // Search Button

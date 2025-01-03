@@ -33,17 +33,33 @@ class _ReviewsSectionState extends State<ReviewsSection> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Column(
-        children: [
-          _buildTabRow(),
-          const SizedBox(height: 10),
-          Expanded(child: _buildContentSection()),
-        ],
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(//yy line 38-53
+      backgroundColor: Colors.white,
+      elevation: 0,
+      title: const Text(
+        'Reviews',
+        style: TextStyle(
+          color: Colors.black,
+          fontWeight: FontWeight.bold,
+        ),
       ),
-    );
-  }
+      centerTitle: true,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.black),
+        onPressed: () => Navigator.pop(context),
+      ),
+    ),
+    body: Column(
+      children: [
+        _buildTabRow(),
+        const SizedBox(height: 10),
+        Expanded(child: _buildContentSection()),
+      ],
+    ),
+  );
+}
 
   Widget _buildTabRow() {
     return Row(

@@ -104,6 +104,7 @@ class _ListingPageState extends State<ListingPage> {
           builder: (context) => UploadServicePage(
             prefillData: {
               ...baseData,
+              'category': widget.product['category'], //yy
               'pricingDetails': widget.product['pricingDetails'],
               'availability': widget.product['availability'],
             },
@@ -553,6 +554,7 @@ Widget _buildServiceContent() {
          ),
        ),
        const SizedBox(height: 20),
+        _buildInfoField("Category", widget.product['category']),//yy
        _buildInfoField("Pricing Details", widget.product['pricingDetails']),
        _buildInfoField("Availability", widget.product['availability']),
        _buildInfoField("Description", widget.product['details']),

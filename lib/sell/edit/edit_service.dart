@@ -38,11 +38,25 @@ class _EditServicePageState extends State<EditServicePage> {
   static const int maxVideo = 1;
   bool _isUploading = false;
 
+    // Categories
+  final List<String> _categories = [//yy
+   
+    'Printing Services',
+    'Laundry Services',
+    'Tutoring Services',
+    'Delivery Services',
+    'Transportation Services',
+    'Others'
+  ];
+
 
   late TextEditingController _nameController;
   late TextEditingController _priceController;
   late TextEditingController _priceDetailsController;
   late TextEditingController _availabilityController;
+    late String _initialCategory;//yy
+  late String _category = 'Uncategorized';//yy
+
   late TextEditingController _detailsController;
   
   // Initialize with empty strings
@@ -323,6 +337,8 @@ class _EditServicePageState extends State<EditServicePage> {
           _priceDetailsController.text = _productData?['pricingDetails'] ?? '';
           _availabilityController.text = _productData?['availability'] ?? '';
           _detailsController.text = _productData?['details'] ?? '';
+          _category = _productData?['category'] ?? 'Uncategorized';//yy
+
 
 
           // Set initial values after data is loaded
@@ -331,6 +347,7 @@ class _EditServicePageState extends State<EditServicePage> {
           _initialPriceDetails = _priceDetailsController.text;
           _initialAvailability = _availabilityController.text;
           _initialDetails = _detailsController.text;
+          _initialCategory = _category;//yy
 
 
           _isLoading = false;
@@ -386,6 +403,7 @@ class _EditServicePageState extends State<EditServicePage> {
       Map<String, dynamic> updateData = {
         'name': _nameController.text.trim(),
         'price': double.parse(double.parse(_priceController.text.trim()).toStringAsFixed(2)),
+        'category': _category,//yy
         'pricingDetails': _priceDetailsController.text.trim(),
         'availability': _availabilityController.text.trim(),
         'details': _detailsController.text.trim(),
@@ -528,7 +546,30 @@ class _EditServicePageState extends State<EditServicePage> {
                         ),
                       ),
                     ),
-                
+
+                DropdownButtonFormField<String>(//yy
+                  value: _category,
+                  iconEnabledColor: Color(0xFF808569), 
+                  decoration: const InputDecoration(
+                    labelText: 'Category',
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: Color(0xFF808569)),
+                    ),
+                    labelStyle: TextStyle(color: Colors.grey),
+                    floatingLabelStyle: TextStyle(color: Color(0xFF808569)),
+                  ),
+                  items: _categories.map((String category) {
+                    return DropdownMenuItem<String>(
+                      value: category,
+                      child: Text(category),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      _category = newValue ?? 'Uncategorized';
+                    });
+                  },
+                ),
                 const SizedBox(height: 20),
                 TextFormField(
                   controller: _nameController,

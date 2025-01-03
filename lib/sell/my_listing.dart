@@ -160,21 +160,36 @@ String? getFirstValidImage(Map<String, dynamic> product) {//yy
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-            body: SafeArea(
-              child: Column(
-                children: [
-                  _buildTabRow(),
-                  //const SizedBox(height: 10),
-                  Expanded(
-                    child: _buildContentSection()
-                  ),
-                ],
-              ),
-            ),
-          );
-  }
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(//yy
+      backgroundColor: Colors.white,
+      elevation: 0,
+      title: const Text(
+        'My Listing',
+        style: TextStyle(
+          color: Colors.black,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      centerTitle: true,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.black),
+        onPressed: () => Navigator.pop(context),
+      ),
+    ),//yy
+    body: SafeArea(
+      child: Column(
+        children: [
+          _buildTabRow(),
+          Expanded(
+            child: _buildContentSection()
+          ),
+        ],
+      ),
+    ),
+  );
+}
 
   Widget _buildTabRow() {
     return Row(

@@ -15,18 +15,25 @@ class TransactionHistoryPage extends StatefulWidget {
 
 class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Transaction History',
-          style: TextStyle(
-            fontSize: 15,  // Smaller font size
-          ),
+Widget build(BuildContext context) {
+  return Scaffold(//yy line19-35
+    appBar: AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      title: const Text(
+        'Transaction History',
+        style: TextStyle(
+          color: Colors.black,
+          fontWeight: FontWeight.bold,
         ),
-        backgroundColor: const Color(0xFFE5E8D9),
       ),
-      body: StreamBuilder(
+      centerTitle: true,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.black),
+        onPressed: () => Navigator.pop(context),
+      ),
+    ),
+    body: StreamBuilder(
         stream: FirebaseFirestore.instance
             .collection('users')
             .doc(widget.userId)  // Use the userId passed to the widget

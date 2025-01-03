@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 import 'package:unithrift/account/favourite_service.dart';
 import 'package:unithrift/explore/feature/item_feature.dart';
 import 'package:unithrift/explore/rental/item_rental.dart';
@@ -156,36 +157,64 @@ class _PopularRentalPageState extends State<PopularRentalPage> {
         : name;
   }
 
-  void _showDateRangePicker() async {
-    DateTimeRange? picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2025),
-      initialDateRange: _startDate != null && _endDate != null
-          ? DateTimeRange(start: _startDate!, end: _endDate!)
-          : null,
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.light().copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF424632),
-              onPrimary: Colors.white,
-              surface: Color(0xFFF2F3EC),
-              onSurface: Colors.black,
-            ),
+  
+void _showDateRangePicker() async {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return Dialog(
+        child: Container(
+          height: 400,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              const Text(
+                'Select Rental Period',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Expanded(
+                child: SfDateRangePicker(
+                  view: DateRangePickerView.month,
+                  selectionMode: DateRangePickerSelectionMode.range,
+                  minDate: DateTime.now(),
+                  maxDate: DateTime.now().add(const Duration(days: 365)),
+                  selectionColor: const Color(0xFF808569),
+                  startRangeSelectionColor: const Color(0xFF808569),
+                  endRangeSelectionColor: const Color(0xFF808569),
+                  rangeSelectionColor: const Color(0xFFE5E8D9),
+                  todayHighlightColor: const Color(0xFF808569),
+                  selectionTextStyle: const TextStyle(color: Colors.white),
+                  onSelectionChanged: (DateRangePickerSelectionChangedArgs args) {
+                    if (args.value is PickerDateRange) {
+                      setState(() {
+                        _startDate = args.value.startDate;
+                        _endDate = args.value.endDate;
+                      });
+                    }
+                  },
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF808569),
+                ),
+                child: const Text('Confirm', style: TextStyle(color: Colors.white)),
+              ),
+            ],
           ),
-          child: child!,
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
+}
 
-    if (picked != null) {
-      setState(() {
-        _startDate = picked.start;
-        _endDate = picked.end;
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {

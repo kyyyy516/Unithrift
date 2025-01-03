@@ -165,7 +165,7 @@ class _FeaturePageState extends State<FeaturePage> {
                       ),
                     ),
                     Text(
-                      "Click on Me to Turn Your Pre-loved Items into Cash!",
+                      "Turn Your Pre-loved Items into Cash!",
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.normal,

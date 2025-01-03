@@ -57,7 +57,7 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
       final ordersSnapshot = await FirebaseFirestore.instance
           .collectionGroup('orders')
           .where('productID', isEqualTo: widget.product['productID'])
-          .where('status', whereIn: ['pending', 'confirmed']).get();
+          .where('status', whereIn: ['Pending', 'confirmed']).get();
 
       Set<DateTime> bookedDatesSet = {};
 
@@ -646,33 +646,45 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                                         ),
                                         const SizedBox(height: 20),
                                         Expanded(
-                                          child: SfDateRangePicker(
-                                            controller: _datePickerController,
-                                            view: DateRangePickerView.month,
-                                            selectionMode:
-                                                DateRangePickerSelectionMode
-                                                    .range,
-                                            minDate: DateTime.now(),
-                                            maxDate: DateTime.now()
-                                                .add(const Duration(days: 365)),
-                                            monthViewSettings:
-                                                DateRangePickerMonthViewSettings(
-                                              blackoutDates: _bookedDates,
-                                            ),
-                                            onSelectionChanged:
-                                                (DateRangePickerSelectionChangedArgs
-                                                    args) {
-                                              if (args.value
-                                                  is PickerDateRange) {
-                                                setState(() {
-                                                  _startDate =
-                                                      args.value.startDate;
-                                                  _endDate = args.value.endDate;
-                                                });
-                                              }
-                                            },
+                                            child: SfDateRangePicker(
+                                          controller: _datePickerController,
+                                          view: DateRangePickerView.month,
+                                          selectionMode:
+                                              DateRangePickerSelectionMode
+                                                  .range,
+                                          minDate: DateTime.now(),
+                                          maxDate: DateTime.now()
+                                              .add(const Duration(days: 365)),
+                                          monthViewSettings:
+                                              DateRangePickerMonthViewSettings(
+                                            blackoutDates: _bookedDates,
                                           ),
-                                        ),
+                                          selectionColor:
+                                              const Color(0xFF808569),
+                                          startRangeSelectionColor:
+                                              const Color(0xFF808569),
+                                          endRangeSelectionColor:
+                                              const Color(0xFF808569),
+                                          rangeSelectionColor:
+                                              const Color(0xFFE5E8D9),
+                                          todayHighlightColor:
+                                              const Color(0xFF808569),
+                                          selectionTextStyle: const TextStyle(
+                                              color: Colors.white),
+                                          enablePastDates: false,
+                                          showNavigationArrow: true,
+                                          onSelectionChanged:
+                                              (DateRangePickerSelectionChangedArgs
+                                                  args) {
+                                            if (args.value is PickerDateRange) {
+                                              setState(() {
+                                                _startDate =
+                                                    args.value.startDate;
+                                                _endDate = args.value.endDate;
+                                              });
+                                            }
+                                          },
+                                        )),
                                         ElevatedButton(
                                           onPressed: () {
                                             Navigator.pop(context);
@@ -910,33 +922,45 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
                                         ),
                                         const SizedBox(height: 20),
                                         Expanded(
-                                          child: SfDateRangePicker(
-                                            controller: _datePickerController,
-                                            view: DateRangePickerView.month,
-                                            selectionMode:
-                                                DateRangePickerSelectionMode
-                                                    .range,
-                                            minDate: DateTime.now(),
-                                            maxDate: DateTime.now()
-                                                .add(const Duration(days: 365)),
-                                            monthViewSettings:
-                                                DateRangePickerMonthViewSettings(
-                                              blackoutDates: _bookedDates,
-                                            ),
-                                            onSelectionChanged:
-                                                (DateRangePickerSelectionChangedArgs
-                                                    args) {
-                                              if (args.value
-                                                  is PickerDateRange) {
-                                                setState(() {
-                                                  _startDate =
-                                                      args.value.startDate;
-                                                  _endDate = args.value.endDate;
-                                                });
-                                              }
-                                            },
+                                            child: SfDateRangePicker(
+                                          controller: _datePickerController,
+                                          view: DateRangePickerView.month,
+                                          selectionMode:
+                                              DateRangePickerSelectionMode
+                                                  .range,
+                                          minDate: DateTime.now(),
+                                          maxDate: DateTime.now()
+                                              .add(const Duration(days: 365)),
+                                          monthViewSettings:
+                                              DateRangePickerMonthViewSettings(
+                                            blackoutDates: _bookedDates,
                                           ),
-                                        ),
+                                          selectionColor:
+                                              const Color(0xFF808569),
+                                          startRangeSelectionColor:
+                                              const Color(0xFF808569),
+                                          endRangeSelectionColor:
+                                              const Color(0xFF808569),
+                                          rangeSelectionColor:
+                                              const Color(0xFFE5E8D9),
+                                          todayHighlightColor:
+                                              const Color(0xFF808569),
+                                          selectionTextStyle: const TextStyle(
+                                              color: Colors.white),
+                                          enablePastDates: false,
+                                          showNavigationArrow: true,
+                                          onSelectionChanged:
+                                              (DateRangePickerSelectionChangedArgs
+                                                  args) {
+                                            if (args.value is PickerDateRange) {
+                                              setState(() {
+                                                _startDate =
+                                                    args.value.startDate;
+                                                _endDate = args.value.endDate;
+                                              });
+                                            }
+                                          },
+                                        )),
                                         ElevatedButton(
                                           onPressed: () {
                                             Navigator.pop(context);
@@ -2064,6 +2088,3 @@ class _ItemRentalPageState extends State<ItemRentalPage> {
     );
   }
 }
-
-
-

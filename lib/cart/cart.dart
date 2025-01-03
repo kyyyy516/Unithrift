@@ -15,6 +15,8 @@ class Cart extends StatefulWidget {
 class _CartState extends State<Cart> {
   int _selectedTabIndex = 0;
   int _selectedIndex = 3;
+  String? sellerName;
+String? sellerProfileImage;
 
   final Set<String> _deletingItems = {};
 
@@ -43,8 +45,8 @@ class _CartState extends State<Cart> {
                 .get();
 
             if (sellerDoc.exists) {
-              cartData['sellerName'] =
-                  sellerDoc.data()?['username'] ?? 'Unknown Seller';
+               cartData['sellerName'] = sellerDoc.data()?['username'];
+            cartData['sellerProfileImage'] = sellerDoc.data()?['profileImage'];
             }
           }
 
@@ -54,6 +56,17 @@ class _CartState extends State<Cart> {
       return cartItems;
     });
   }
+
+
+
+Future<String?> getSellerProfileImage(String sellerId) async {
+  final sellerDoc = await FirebaseFirestore.instance
+      .collection('users')
+      .doc(sellerId)
+      .get();
+  return sellerDoc.data()?['profileImage'];
+}
+
 
   String getValidImageUrl(Map<String, dynamic> item) {
     // List of possible image URLs in priority order
@@ -337,30 +350,37 @@ class _CartState extends State<Cart> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(10),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: const Color(0xFF808569),
-                  radius: 20,
-                  child: Text(
-                    seller.isNotEmpty ? seller[0].toUpperCase() : '',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    seller,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+  padding: const EdgeInsets.all(10),
+  child: Row(
+    children: [
+      FutureBuilder<String?>(
+        future: getSellerProfileImage(items[0]['sellerUserId']),
+        builder: (context, snapshot) {
+          return CircleAvatar(
+            backgroundColor: const Color(0xFF808569),
+            radius: 20,
+            backgroundImage: snapshot.data != null ? NetworkImage(snapshot.data!) : null,
+            child: (!snapshot.hasData || snapshot.data == null) 
+              ? Text(
+                  seller.isNotEmpty ? seller[0].toUpperCase() : '',
+                  style: const TextStyle(color: Colors.white),
+                )
+              : null,
+          );
+        },
+      ),
+      const SizedBox(width: 10),
+      Text(
+        seller ?? 'Seller Name',
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    ],
+  ),
+)
+,
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),

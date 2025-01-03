@@ -8,6 +8,7 @@ import 'package:unithrift/account/my_sales.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:unithrift/account/myorder.dart';
+import 'package:unithrift/account/sales_report.dart';
 import 'package:unithrift/account/showfavourite.dart';
 import 'package:unithrift/account/transaction.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -230,6 +231,56 @@ class _AccountInfoState extends State<AccountInfo> {
     }
   }
 
+  // Helper method for creating consistent icon buttons
+  Widget _buildIconButton({//yy
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Icon(icon, color: const Color.fromARGB(255, 0, 0, 0), size: 28),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(
+                fontSize: 12, color: const Color.fromARGB(255, 0, 0, 0)),
+          ),
+        ],
+      ),
+    );
+  }
+
+// Helper method for white boxes with icons and arrows
+  Widget _buildWhiteBox({//yy
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 2,
+          ),
+        ],
+      ),
+      child: ListTile(
+        leading: Icon(icon, color: const Color.fromARGB(255, 0, 0, 0)),
+        title: Text(title),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: onTap,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -242,7 +293,7 @@ class _AccountInfoState extends State<AccountInfo> {
         ),
         centerTitle: true,
         actions: [
-          IconButton(
+           /* IconButton(     //yy
             icon: const Icon(Icons.insights, color: Colors.black),
             onPressed: () {
               Navigator.push(
@@ -252,7 +303,7 @@ class _AccountInfoState extends State<AccountInfo> {
                 ),
               );
             },
-          ),
+          ),*/
           IconButton(
             icon: const Icon(Icons.share, color: Colors.black),
             onPressed: () {
@@ -322,266 +373,294 @@ class _AccountInfoState extends State<AccountInfo> {
           final userData = snapshot.data!.data() as Map<String, dynamic>;
 
           return SingleChildScrollView(
-            child: Column(
-              children: [
-                // Top Section with Background and Profile
-                Container(
-                  color: Colors.green[100],
-                  child: Stack(
-                    children: [
-                      // Background image
-                      Container(
-                        height: 200,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          image: userData['backgroundImage'] != null
-                              ? DecorationImage(
-                                  image:
-                                      NetworkImage(userData['backgroundImage']),
-                                  fit: BoxFit.cover,
-                                )
-                              : null,
-                          color: Colors.green[100],
-                        ),
-                        child: Stack(
+            child: Column(children: [
+              // Top Section with Background and Profile
+              Container(
+                color: Colors.green[100],
+                child: Stack(
+                  clipBehavior: Clip.none, //yy
+
+                  children: [
+                    // Background image
+                    Container(
+                      height: 250,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        image: userData['backgroundImage'] != null
+                            ? DecorationImage(
+                                image:
+                                    NetworkImage(userData['backgroundImage']),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                        color: Colors.green[100],
+                      ),
+                      child: Stack(
+                        children: [
+                          // Edit Background
+                          Positioned(
+                            top: 10,
+                            right: 50,
+                            child: GestureDetector(
+                              onTap: () => _pickAndUploadImage('background'),
+                              child: const CircleAvatar(
+                                radius: 14,
+                                backgroundColor: Colors.white,
+                                child: Icon(Icons.edit,
+                                    size: 14, color: Colors.black),
+                              ),
+                            ),
+                          ),
+                          // Delete Background
+                          Positioned(
+                            top: 10,
+                            right: 10,
+                            child: GestureDetector(
+                              onTap: () => _deleteBackgroundImage(),
+                              child: const CircleAvatar(
+                                radius: 14,
+                                backgroundColor: Colors.red,
+                                child: Icon(Icons.delete,
+                                    size: 14, color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      children: [
+                        Stack(
                           children: [
-                            // Edit Background
+                            GestureDetector(
+                              onTap: () {
+                                if (userData['profileImage'] != null) {
+                                  _showFullScreenImage(
+                                      userData['profileImage']);
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            'No profile picture to display')),
+                                  );
+                                }
+                              },
+                              child: CircleAvatar(
+                                radius: 40,
+                                backgroundImage:
+                                    userData['profileImage'] != null
+                                        ? NetworkImage(userData['profileImage'])
+                                        : const AssetImage('assets/profile.png')
+                                            as ImageProvider,
+                              ),
+                            ),
                             Positioned(
-                              top: 10,
-                              right: 50,
+                              bottom: 0,
+                              right: 0,
                               child: GestureDetector(
-                                onTap: () => _pickAndUploadImage('background'),
+                                onTap: () => _pickAndUploadImage('profile'),
                                 child: const CircleAvatar(
                                   radius: 14,
                                   backgroundColor: Colors.white,
                                   child: Icon(Icons.edit,
-                                      size: 14, color: Colors.black),
-                                ),
-                              ),
-                            ),
-                            // Delete Background
-                            Positioned(
-                              top: 10,
-                              right: 10,
-                              child: GestureDetector(
-                                onTap: () => _deleteBackgroundImage(),
-                                child: const CircleAvatar(
-                                  radius: 14,
-                                  backgroundColor: Colors.red,
-                                  child: Icon(Icons.delete,
-                                      size: 14, color: Colors.white),
+                                      size: 16, color: Colors.black),
                                 ),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      Column(
-                        children: [
-                          Stack(
-                            children: [
-                              GestureDetector(
-                                onTap: () {
-                                  if (userData['profileImage'] != null) {
-                                    _showFullScreenImage(
-                                        userData['profileImage']);
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                          content: Text(
-                                              'No profile picture to display')),
-                                    );
-                                  }
-                                },
-                                child: CircleAvatar(
-                                  radius: 40,
-                                  backgroundImage: userData['profileImage'] !=
-                                          null
-                                      ? NetworkImage(userData['profileImage'])
-                                      : const AssetImage('assets/profile.png')
-                                          as ImageProvider,
-                                ),
-                              ),
-                              Positioned(
-                                bottom: 0,
-                                right: 0,
-                                child: GestureDetector(
-                                  onTap: () => _pickAndUploadImage('profile'),
-                                  child: const CircleAvatar(
-                                    radius: 14,
-                                    backgroundColor: Colors.white,
-                                    child: Icon(Icons.edit,
-                                        size: 16, color: Colors.black),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            userData['username'] ?? 'User Name',
-                            style: const TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.star,
-                                  color: Colors.yellow, size: 18),
-                              const SizedBox(width: 4),
-                              Text(
-                                //(userData['rating'] ?? 0.0).toStringAsFixed(2),
-                                (double.tryParse(userData['rating'].toString()) ?? 0.0).toStringAsFixed(2), // zx
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            userData['address'] ?? 'Location Unknown',
-                            style: const TextStyle(
-                                color: Colors.black, fontSize: 14),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            userData['bio'] ?? 'No bio added',
-                            style: const TextStyle(
-                                color: Colors.black, fontSize: 16),
-                          ),
-                          const SizedBox(height: 20),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                // Buttons Section
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFE5E8D9),
-                            foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(vertical: 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => MyOrders()),
-                            );
-                          },
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.shopping_bag_outlined),
-                              SizedBox(width: 8),
-                              Text('My Order'),
-                            ],
-                          ),
+                        const SizedBox(height: 10),
+                        Text(
+                          userData['username'] ?? 'User Name',
+                          style: const TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFE5E8D9),
-                            foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(vertical: 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.star,
+                                color: Colors.yellow, size: 18),
+                            const SizedBox(width: 4),
+                            Text(
+                              //(userData['rating'] ?? 0.0).toStringAsFixed(2),
+                              (double.tryParse(userData['rating'].toString()) ??
+                                      0.0)
+                                  .toStringAsFixed(2), // zx
+                              style: const TextStyle(fontSize: 14),
                             ),
-                          ),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => const ShowFavorites()),
-                            );
-                          },
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.favorite_border_outlined),
-                              SizedBox(width: 8),
-                              Text('My Likes'),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFE5E8D9),
-                            foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(vertical: 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => const MySalesPage()),
-                            );
-                          },
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.storefront),
-                              SizedBox(width: 8),
-                              Text('My Sales'),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(color: Colors.grey, thickness: 1),
-                // Tab Section
-                DefaultTabController(
-                  length: 3,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const TabBar(
-                          tabs: [
-                            Tab(text: 'Listing'),
-                            Tab(text: 'Review'),
-                            Tab(text: 'Transaction'),
                           ],
                         ),
-                        Container(
-                          height: MediaQuery.of(context).size.height * 0.7,
-                          child: TabBarView(
-                            children: [
-                              const AllProductPage(),
-                              if (userData != null)
-                                ReviewsSection(
-                                    userId: FirebaseAuth.instance.currentUser!
-                                        .uid), // Pass the userId
-                              TransactionHistoryPage(
-                                userId: FirebaseAuth.instance.currentUser!.uid,
-                              ),
-                            ],
-                          ),
+                        const SizedBox(height: 5),
+                        Text(
+                          userData['address'] ?? 'Location Unknown',
+                          style: const TextStyle(
+                              color: Colors.black, fontSize: 14),
                         ),
+                        const SizedBox(height: 5),
+                        Text(
+                          userData['bio'] ?? 'No bio added',
+                          style: const TextStyle(
+                              color: Colors.black, fontSize: 16),
+                        ),
+                        const SizedBox(height: 20),
                       ],
                     ),
+                  ],
+                ),
+              ),
+              Transform.translate(
+                //yy
+                offset: const Offset(0, -30),
+                child:
+// Buttons Section
+                    Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(30),
+                      topRight: Radius.circular(30),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.2),
+                        spreadRadius: 1,
+                        blurRadius: 5,
+                        offset: const Offset(0, -2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 20),
+                      // First section - My Order, My Likes, Transaction
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _buildIconButton(
+                              icon: Icons.favorite_border_outlined,
+                              label: 'My Likes',
+                              onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) =>
+                                          const ShowFavorites())),
+                            ),
+                            _buildIconButton(
+                              icon: Icons.shopping_bag_outlined,
+                              label: 'My Order',
+                              onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => MyOrders())),
+                            ),
+                            _buildIconButton(
+                              icon: Icons.receipt_long_outlined,
+                              label: 'Transaction',
+                              onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) =>
+                                          TransactionHistoryPage(
+                                              userId: FirebaseAuth
+                                                  .instance.currentUser!.uid))),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const Divider(
+                          color: Color.fromARGB(255, 222, 222, 222),
+                          thickness: 2,
+                          height: 32),
+
+// Seller Diary heading
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text('Seller Diary',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+
+// Seller Options in white boxes
+                      Column(
+                        children: [
+                          _buildWhiteBox(
+                            icon: Icons.list_alt,
+                            title: 'My Listing',
+                            onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const AllProductPage())),
+                          ),
+                          _buildWhiteBox(
+                            icon: Icons.store,
+                            title: 'My Sales',
+                            onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => const MySalesPage())),
+                          ),
+                          _buildWhiteBox(
+                            icon: Icons.assessment,
+                            title: 'Sales Report',
+                            onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const SalesReportPage())),
+                          ),
+                          _buildWhiteBox(
+                            icon: Icons.analytics,
+                            title: 'Seller Analytics',
+                            onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const AnalyticsPage())),
+                          ),
+                        ],
+                      ),
+
+                      const Divider(
+                          color: Color.fromARGB(255, 222, 222, 222),
+                          thickness: 2,
+                          height: 32),
+
+// Other heading
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text('Other',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+
+// Review in white box
+                      _buildWhiteBox(
+                        icon: Icons.star_border,
+                        title: 'Review',
+                        onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => ReviewsSection(
+                                    userId: FirebaseAuth
+                                        .instance.currentUser!.uid))),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ]),
           );
         },
       ),
