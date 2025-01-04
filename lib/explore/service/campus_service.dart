@@ -83,11 +83,15 @@ List<DateTime> _bookedDates = [];
 
         for (var productDoc in productsSnapshot.docs) {
           var productData = productDoc.data();
-          productData['productID'] = productDoc.id;
-          productData['userId'] = userDoc.id;
-          productData['userEmail'] = userDoc['email'];
-          productData['username'] = userDoc.data()['username'];
-          allProducts.add(productData);
+
+          // Only add products that are not explicitly marked as unavailable, zx
+          if (productData['isAvailable'] != false) {
+            productData['productID'] = productDoc.id;
+            productData['userId'] = userDoc.id;
+            productData['userEmail'] = userDoc.data()['email'];
+            productData['username'] = userDoc.data()['username'];
+            allProducts.add(productData);
+          }
         }
       }
 
